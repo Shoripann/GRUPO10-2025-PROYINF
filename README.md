@@ -13,4 +13,4 @@ Puedes ver el video de la presentacion del cliente mediante este [enlace]()
 
 ## Wiki
 
-Puede acceder a la Wiki mediante este [enlace]()
+Puede acceder a la Wiki mediante este [enlace](https://github.com/Shoripann/GRUPO10-2025-PROYINF/wiki#grupo-10)
