@@ -9,7 +9,7 @@ Repositorio del grupo 10, cuyos integrantes son:
 
 ### Presentacion del Cliente
 
-Puedes ver el video de la presentacion del cliente mediante este [enlace]()
+Puedes ver el video de la presentacion del cliente mediante este [enlace](https://aula.usm.cl/mod/resource/view.php?id=6322574)
 
 ## Wiki
 
