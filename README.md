@@ -2,10 +2,10 @@
 
 Repositorio del grupo 10, cuyos integrantes son:
 
-* Camilo Gonzalez
-* Martina Alvarez
-* Joaquin Quezada
-* Gabriel Sandoval 202273625-9
+* Camilo Gonzalez (202204638-4)
+* Martina Alvarez ()
+* Joaquin Quezada ()
+* Gabriel Sandoval (202273625-9)
 
 ### Presentacion del Cliente
 
