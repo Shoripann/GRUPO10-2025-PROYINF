@@ -5,7 +5,7 @@ Repositorio del grupo 10, cuyos integrantes son:
 * Camilo Gonzalez
 * Martina Alvarez
 * Joaquin Quezada
-* Gabriel Sandoval
+* Gabriel Sandoval 202273625-9
 
 ## Wiki
 
