@@ -11,12 +11,10 @@ Repositorio del grupo 10, cuyos integrantes son:
 
 Puedes ver el video de la presentacion del cliente mediante este [enlace](https://aula.usm.cl/mod/resource/view.php?id=6322574).
 
+### Levantamiento del Proyecto
+
+Para correr el proyecto, se tiene que descargar la carpeta "CodigoProyecto", al tener la carpeta descargada, debes acceder a index.html y abrirlo con tu navegador de confianza, listo ya accediste al proyecto!
+
 ## Wiki
 
 Puede acceder a la Wiki mediante este [enlace](https://github.com/Shoripann/GRUPO10-2025-PROYINF/wiki#grupo-10).
-
-
-## Levantamiento del Proyecto
-
-Para correr el proyecto, se tiene que descargar la carpeta "CodigoProyecto", al tener la carpeta descargada, debes acceder a index.html y abrirlo con tu navegador de confianza, listo ya accediste al proyecto!
-:)
