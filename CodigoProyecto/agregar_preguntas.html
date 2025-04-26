@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Profesor - Agregar Preguntas</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <header>Profesor - Agregar Preguntas</header>
+
+  <!-- Selección de ensayo -->
+  <div class="container">
+    <h2>Seleccionar Ensayo</h2>
+    <select id="ensayoNuevo">
+      <option value="">-- Selecciona un ensayo --</option>
+      <option value="Ensayo 1">Ensayo 1</option>
+      <option value="Ensayo 2">Ensayo 2</option>
+      <option value="Ensayo 3">Ensayo 3</option>
+    </select><br><br>
+
+    <h3>Agregar Pregunta</h3>
+    <form id="crearPreguntaForm">
+      <label for="preguntaNueva">Pregunta:</label>
+      <input type="text" id="preguntaNueva" required><br><br>
+      
+      <label for="opcion1">Opción A:</label>
+      <input type="text" id="opcion1" required><br><br>
+      
+      <label for="opcion2">Opción B:</label>
+      <input type="text" id="opcion2" required><br><br>
+      
+      <label for="opcion3">Opción C:</label>
+      <input type="text" id="opcion3" required><br><br>
+      
+      <label for="opcion4">Opción D:</label>
+      <input type="text" id="opcion4" required><br><br>
+      
+      <label for="respuestaCorrecta">Respuesta Correcta:</label>
+      <select id="respuestaCorrecta" required>
+        <option value="">-- Selecciona la respuesta correcta --</option>
+        <option value="A">A</option>
+        <option value="B">B</option>
+        <option value="C">C</option>
+        <option value="D">D</option>
+      </select><br><br>
+      
+      <button type="submit">Agregar Pregunta</button>
+    </form>
+  </div>
+
+  <script>
+    // Función para agregar preguntas
+    document.getElementById("crearPreguntaForm").addEventListener("submit", function(event) {
+      event.preventDefault();
+
+      const ensayoSeleccionado = document.getElementById("ensayoNuevo").value;
+      const preguntaNueva = document.getElementById("preguntaNueva").value;
+      const opcion1 = document.getElementById("opcion1").value;
+      const opcion2 = document.getElementById("opcion2").value;
+      const opcion3 = document.getElementById("opcion3").value;
+      const opcion4 = document.getElementById("opcion4").value;
+      const respuestaCorrecta = document.getElementById("respuestaCorrecta").value;
+
+      if (!ensayoSeleccionado) {
+        alert("Selecciona un ensayo para agregar la pregunta.");
+        return;
+      }
+
+      const nuevaPregunta = {
+        pregunta: preguntaNueva,
+        opciones: [opcion1, opcion2, opcion3, opcion4],
+        correcta: respuestaCorrecta
+      };
+
+      const ensayosGuardados = JSON.parse(localStorage.getItem("ensayos")) || {};
+      if (ensayosGuardados[ensayoSeleccionado]) {
+        ensayosGuardados[ensayoSeleccionado].push(nuevaPregunta);
+      } else {
+        ensayosGuardados[ensayoSeleccionado] = [nuevaPregunta];
+      }
+
+      localStorage.setItem("ensayos", JSON.stringify(ensayosGuardados));
+
+      alert("Pregunta añadida exitosamente.");
+      document.getElementById("crearPreguntaForm").reset();
+    });
+  </script>
+</body>
+</html>

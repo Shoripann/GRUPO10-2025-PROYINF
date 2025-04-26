@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Profesor - Consultar Promedio</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <header>Profesor - Consultar Promedio de Puntajes</header>
+
+  <div class="container">
+    <h2>Consultar Promedio de Puntajes</h2>
+
+    <!-- Selección de curso -->
+    <select id="cursoSeleccionado">
+      <option value="">-- Selecciona un curso --</option>
+      <option value="Curso 1">Curso 1</option>
+      <option value="Curso 2">Curso 2</option>
+      <option value="Curso 3">Curso 3</option>
+    </select><br><br>
+
+    <!-- Selección de ensayo -->
+    <select id="ensayoPromedio">
+      <option value="">-- Selecciona un ensayo --</option>
+    </select><br><br>
+
+    <button onclick="consultarPromedio()">Consultar Promedio</button>
+    <p id="promedioResultado"></p>
+  </div>
+
+  <script>
+    const cursos = JSON.parse(localStorage.getItem("cursos")) || {
+      "Curso 1": ["Ensayo 1", "Ensayo 2"],
+      "Curso 2": ["Ensayo 1", "Ensayo 3"],
+      "Curso 3": ["Ensayo 2", "Ensayo 3"]
+    };
+
+    // Función para actualizar los ensayos disponibles
+    document.getElementById("cursoSeleccionado").addEventListener("change", function() {
+      const cursoSeleccionado = this.value;
+      const ensayoDropdown = document.getElementById("ensayoPromedio");
+
+      if (cursoSeleccionado) {
+        const ensayosDelCurso = cursos[cursoSeleccionado];
+        ensayoDropdown.innerHTML = '<option value="">-- Selecciona un ensayo --</option>';
+        ensayosDelCurso.forEach(ensayo => {
+          const option = document.createElement("option");
+          option.value = ensayo;
+          option.textContent = ensayo;
+          ensayoDropdown.appendChild(option);
+        });
+      } else {
+        ensayoDropdown.innerHTML = '<option value="">-- Selecciona un ensayo --</option>';
+      }
+    });
+
+    // Función para consultar el promedio de puntajes
+    function consultarPromedio() {
+      const ensayoSeleccionado = document.getElementById("ensayoPromedio").value;
+
+      if (!ensayoSeleccionado) {
+        alert("Selecciona un ensayo para ver el promedio.");
+        return;
+      }
+
+      const puntajes = JSON.parse(localStorage.getItem("puntajes")) || {};
+      const puntajesEnsayo = puntajes[ensayoSeleccionado] || [];
+      if (puntajesEnsayo.length === 0) {
+        document.getElementById("promedioResultado").textContent = "No hay resultados para este ensayo aún.";
+        return;
+      }
+
+      const totalPuntajes = puntajesEnsayo.reduce((acc, puntaje) => acc + puntaje, 0);
+      const promedio = totalPuntajes / puntajesEnsayo.length;
+
+      document.getElementById("promedioResultado").textContent = `Promedio de puntajes para "${ensayoSeleccionado}": ${promedio.toFixed(2)}%`;
+    }
+  </script>
+</body>
+</html>

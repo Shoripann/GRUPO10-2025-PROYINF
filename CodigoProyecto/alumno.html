@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Alumno - Ensayos</title>
+  <link rel="stylesheet" href="estilos.css">
+  <style>
+    /* Estilos para el modal (pop-up) */
+    .modal {
+      display: none; /* Ocultar el modal por defecto */
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.4); /* Fondo oscuro */
+      padding-top: 100px;
+      text-align: center;
+    }
+
+    .modal-content {
+      background-color: white;
+      margin: 5% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 60%;
+      border-radius: 10px;
+    }
+
+    .modal-header {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .modal-body {
+      font-size: 18px;
+      margin: 20px 0;
+    }
+
+    .close {
+      color: #aaa;
+      font-size: 28px;
+      font-weight: bold;
+      position: absolute;
+      top: 10px;
+      right: 25px;
+      color: black;
+      cursor: pointer;
+    }
+
+    .close:hover,
+    .close:focus {
+      color: red;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .modal-footer {
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <header>Alumno - Ensayo de Alternativas</header>
+
+  <div class="container">
+    <h2>Selecciona un ensayo</h2>
+    <select id="ensayoSeleccionado">
+      <option value="">-- Selecciona un ensayo --</option>
+      <option value="Ensayo 1">Ensayo 1</option>
+      <option value="Ensayo 2">Ensayo 2</option>
+    </select><br><br>
+
+    <button onclick="mostrarPreguntas()">Iniciar Ensayo</button>
+    
+    <div id="preguntasContainer"></div>
+  </div>
+
+  <!-- Modal para mostrar resultado -->
+  <div id="resultadoModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        Resultado del Ensayo
+      </div>
+      <div class="modal-body" id="resultadoTexto">
+        <!-- El resultado se muestra aquí -->
+      </div>
+      <div class="modal-footer">
+        <button onclick="cerrarModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Ensayos y preguntas guardadas (para simulación)
+    const ensayos = {
+      "Ensayo 1": [
+        { pregunta: "¿Cuál es la capital de Francia?", opciones: ["Berlín", "Madrid", "París", "Roma"], correcta: "C" },
+        { pregunta: "¿Cuánto es 2 + 2?", opciones: ["3", "4", "5", "6"], correcta: "B" }
+      ],
+      "Ensayo 2": [
+        { pregunta: "¿Qué es HTML?", opciones: ["Un lenguaje de programación", "Un lenguaje de marcas", "Un sistema operativo", "Un navegador"], correcta: "B" },
+        { pregunta: "¿Cuál es el color del cielo?", opciones: ["Azul", "Rojo", "Verde", "Amarillo"], correcta: "A" }
+      ]
+    };
+
+    function mostrarPreguntas() {
+      const ensayo = document.getElementById("ensayoSeleccionado").value;
+      const preguntasContainer = document.getElementById("preguntasContainer");
+      
+      if (!ensayo) {
+        alert("Por favor, selecciona un ensayo.");
+        return;
+      }
+
+      const preguntas = ensayos[ensayo];
+      let preguntasHTML = '';
+      preguntas.forEach((pregunta, index) => {
+        preguntasHTML += `
+          <div class="pregunta">
+            <p><strong>${pregunta.pregunta}</strong></p>
+            ${pregunta.opciones.map((opcion, i) => `
+              <label>
+                <input type="radio" name="pregunta${index}" value="${String.fromCharCode(65 + i)}"> ${opcion}
+              </label><br>
+            `).join('')}
+          </div>
+        `;
+      });
+
+      preguntasHTML += `<button onclick="calcularPuntaje('${ensayo}')">Finalizar Ensayo</button>`;
+      preguntasContainer.innerHTML = preguntasHTML;
+    }
+
+    function calcularPuntaje(ensayo) {
+      const preguntas = ensayos[ensayo];
+      let puntaje = 0;
+      let totalPreguntas = preguntas.length;
+
+      preguntas.forEach((pregunta, index) => {
+        const respuestaSeleccionada = document.querySelector(`input[name="pregunta${index}"]:checked`);
+        if (respuestaSeleccionada && respuestaSeleccionada.value === pregunta.correcta) {
+          puntaje++;
+        }
+      });
+
+      mostrarResultado(puntaje, totalPreguntas);
+    }
+
+    function mostrarResultado(puntaje, totalPreguntas) {
+      const modal = document.getElementById("resultadoModal");
+      const resultadoTexto = document.getElementById("resultadoTexto");
+
+      const porcentaje = (puntaje / totalPreguntas) * 100;
+      const mensaje = porcentaje >= 70 ? `¡Felicidades! Has aprobado el ensayo con un ${porcentaje.toFixed(2)}% de aciertos.` :
+        `No has aprobado el ensayo. Tu puntaje es de ${porcentaje.toFixed(2)}%.`;
+
+      resultadoTexto.innerHTML = `${mensaje}<br>Tu puntaje es: ${puntaje} de ${totalPreguntas}.`;
+
+      modal.style.display = "block"; // Mostrar el modal
+    }
+
+    function cerrarModal() {
+      document.getElementById("resultadoModal").style.display = "none"; // Cerrar el modal
+    }
+  </script>
+</body>
+</html>
