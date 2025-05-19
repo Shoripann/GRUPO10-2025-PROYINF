@@ -13,8 +13,7 @@ Puedes ver el video de la presentacion del cliente mediante este [enlace](https:
 
 ### Levantamiento del Proyecto
 
-Para correr el proyecto se utilizo los implmentos otorgados por los ayudantes,primero se tiene que descargar los archivos de la carpeta "CodigoProyecto", al tener la carpeta descargada, debes acceder a 
-"mi-proyecto-node-docker#" escribir en la consola "npx-create-react-app client", luego pegar los archivos descargados en "client/src", navegar por consola a client y escribir por consola "npm start".
+Para correr el proyecto se utilizo los implmentos otorgados por los ayudantes,primero se tiene que descargar los archivos de la carpeta "CodigoProyecto", al tener la carpeta descargada, debes acceder mediante consola a "mi-proyecto-node-docker" escribir en la consola "npx-create-react-app client", luego pegar los archivos descargados en la carpeta "client/src", navegar por consola a client y escribir por consola "npm start".
 
 ## Wiki
 
