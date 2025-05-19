@@ -17,7 +17,7 @@ Para correr el proyecto se utilizo los implmentos otorgados por los ayudantes,pr
 
 ### Video del Prototipo
 
-Puedes ver el video de la presentacion del prototipo mediante este [enlace](https://aula.usm.cl/mod/resource/view.php?id=6322574).
+Puedes ver el video de la presentacion del prototipo mediante este [enlace]([https://aula.usm.cl/mod/resource/view.php?id=6322574](https://www.youtube.com/watch?v=B3q-XpeDJEo)).
 
 ## Wiki
 
