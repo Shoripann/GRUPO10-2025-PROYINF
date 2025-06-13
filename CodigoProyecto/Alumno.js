@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const Alumno = () => {
   const ensayos = JSON.parse(localStorage.getItem('ensayos')) || [];
@@ -7,17 +7,91 @@ const Alumno = () => {
   const [activo, setActivo] = useState(null);
   const [respuestas, setRespuestas] = useState({});
   const [indiceActual, setIndiceActual] = useState(0);
+  const [tiempoRestante, setTiempoRestante] = useState(null);
+  const intervalRef = useRef(null);
+  const activoRef = useRef(null);
 
   // Estados para resultados e intentos
-  const [ensayoSeleccionado, setEnsayoSeleccionado] = useState(null); // para respondidos
-  const [intentoSeleccionado, setIntentoSeleccionado] = useState(null); // para respondidos
-  const [ensayoDisponibleSeleccionado, setEnsayoDisponibleSeleccionado] = useState(null); // para disponibles
+  const [ensayoSeleccionado, setEnsayoSeleccionado] = useState(null);
+  const [intentoSeleccionado, setIntentoSeleccionado] = useState(null);
+  const [ensayoDisponibleSeleccionado, setEnsayoDisponibleSeleccionado] = useState(null);
+
+  // Actualizar la referencia cuando activo cambia
+  useEffect(() => {
+    activoRef.current = activo;
+  }, [activo]);
+
+  // Función para iniciar el temporizador
+  const iniciarTemporizador = (minutos) => {
+    let segundos = minutos * 60;
+    setTiempoRestante(segundos);
+    
+    // Limpiar intervalo anterior si existe
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    
+    // Configurar nuevo intervalo
+    intervalRef.current = setInterval(() => {
+      setTiempoRestante(prev => {
+        if (prev <= 1) {
+          clearInterval(intervalRef.current);
+          tiempoTerminado();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // Función cuando el tiempo termina
+  const tiempoTerminado = () => {
+    const ensayoActual = activoRef.current;
+    if (!ensayoActual) return;
+
+    const correctas = ensayoActual.preguntas.filter(p => respuestas[p.id] === p.correcta).length;
+
+    const resultado = {
+      id: Date.now(),
+      titulo: ensayoActual.titulo,
+      preguntas: ensayoActual.preguntas,
+      respuestas: respuestas,
+      puntaje: correctas,
+      total: ensayoActual.preguntas.length,
+      tiempoUsado: ensayoActual.tiempoMinutos ? (ensayoActual.tiempoMinutos * 60) : null
+    };
+
+    const anteriores = JSON.parse(localStorage.getItem('resultados')) || [];
+    anteriores.push(resultado);
+    localStorage.setItem('resultados', JSON.stringify(anteriores));
+
+    alert(`¡Tiempo terminado!\nRespuestas correctas: ${correctas} de ${ensayoActual.preguntas.length}`);
+
+    // Limpiar estados
+    setActivo(null);
+    setRespuestas({});
+    setIndiceActual(0);
+    setTiempoRestante(null);
+    clearInterval(intervalRef.current);
+    intervalRef.current = null;
+  };
+
+  const comenzarEnsayo = (ensayo) => {
+    setActivo(ensayo);
+    setIndiceActual(0);
+    setEnsayoDisponibleSeleccionado(null);
+    setRespuestas({});
+    
+    if (ensayo.tiempoMinutos) {
+      iniciarTemporizador(ensayo.tiempoMinutos);
+    }
+  };
 
   const seleccionarRespuesta = (pregId, altIdx) => {
     setRespuestas({ ...respuestas, [pregId]: altIdx });
   };
 
   const enviar = () => {
+    if (!activo) return;
+
     const correctas = activo.preguntas.filter(p => respuestas[p.id] === p.correcta).length;
 
     const resultado = {
@@ -26,7 +100,8 @@ const Alumno = () => {
       preguntas: activo.preguntas,
       respuestas: respuestas,
       puntaje: correctas,
-      total: activo.preguntas.length
+      total: activo.preguntas.length,
+      tiempoUsado: activo.tiempoMinutos ? (activo.tiempoMinutos * 60 - tiempoRestante) : null
     };
 
     const anteriores = JSON.parse(localStorage.getItem('resultados')) || [];
@@ -38,116 +113,149 @@ const Alumno = () => {
     setActivo(null);
     setRespuestas({});
     setIndiceActual(0);
+    setTiempoRestante(null);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
   };
 
+  // Limpiar intervalo al desmontar
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
   if (activo) {
-  const pregunta = activo.preguntas[indiceActual];
+    const pregunta = activo.preguntas[indiceActual];
+    
+    const formatTiempo = (segundos) => {
+      const mins = Math.floor(segundos / 60);
+      const secs = segundos % 60;
+      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    };
 
-  return (
-    <div style={{ display: 'flex', height: '90vh', padding: '20px', maxWidth: '960px', margin: '0 auto', gap: '20px' }}>
-      
-      {/* Panel principal con la pregunta */}
-      <div style={{ flex: 3, border: '1px solid #ddd', borderRadius: '8px', padding: '20px', backgroundColor: '#fff' }}>
-        <h2 className="text-2xl font-bold mb-4">{activo.titulo}</h2>
-        <p className="mb-2 font-semibold">Pregunta {indiceActual + 1} de {activo.preguntas.length}</p>
-        <p className="mb-4">{pregunta.pregunta}</p>
-        <div className="mb-4">
-          {pregunta.alternativas.map((alt, i) => (
-            <button
-              key={i}
-              onClick={() => seleccionarRespuesta(pregunta.id, i)}
-              style={{
-                display: 'block',
-                padding: '10px',
-                marginBottom: '10px',
-                backgroundColor: respuestas[pregunta.id] === i ? '#3b82f6' : '#e5e7eb',
-                color: respuestas[pregunta.id] === i ? '#fff' : '#000',
-                borderRadius: '5px',
-                border: '1px solid #ccc',
-                textAlign: 'left',
-                width: '100%',
-              }}
-            >
-              {alt}
-            </button>
-          ))}
+    return (
+      <div style={{ display: 'flex', height: '90vh', padding: '20px', maxWidth: '960px', margin: '0 auto', gap: '20px' }}>
+        
+        {/* Panel principal con la pregunta */}
+        <div style={{ flex: 3, border: '1px solid #ddd', borderRadius: '8px', padding: '20px', backgroundColor: '#fff' }}>
+          {tiempoRestante !== null && (
+            <div style={{
+              position: 'sticky',
+              top: 0,
+              backgroundColor: tiempoRestante <= 60 ? '#fee2e2' : '#ecfdf5',
+              padding: '10px',
+              borderRadius: '5px',
+              marginBottom: '20px',
+              textAlign: 'center',
+              fontWeight: 'bold',
+              color: tiempoRestante <= 60 ? '#dc2626' : '#065f46'
+            }}>
+              Tiempo restante: {formatTiempo(tiempoRestante)}
+            </div>
+          )}
+          
+          <h2 className="text-2xl font-bold mb-4">{activo.titulo}</h2>
+          <p className="mb-2 font-semibold">Pregunta {indiceActual + 1} de {activo.preguntas.length}</p>
+          <p className="mb-4">{pregunta.pregunta}</p>
+          <div className="mb-4">
+            {pregunta.alternativas.map((alt, i) => (
+              <button
+                key={i}
+                onClick={() => seleccionarRespuesta(pregunta.id, i)}
+                style={{
+                  display: 'block',
+                  padding: '10px',
+                  marginBottom: '10px',
+                  backgroundColor: respuestas[pregunta.id] === i ? '#3b82f6' : '#e5e7eb',
+                  color: respuestas[pregunta.id] === i ? '#fff' : '#000',
+                  borderRadius: '5px',
+                  border: '1px solid #ccc',
+                  textAlign: 'left',
+                  width: '100%',
+                }}
+              >
+                {alt}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
+            {indiceActual > 0 && (
+              <button
+                onClick={() => setIndiceActual(indiceActual - 1)}
+                className="btn bg-gray-400 text-white"
+                style={{ padding: '10px 20px', borderRadius: '5px' }}
+              >
+                Anterior
+              </button>
+            )}
+            {indiceActual < activo.preguntas.length - 1 ? (
+              <button
+                onClick={() => setIndiceActual(indiceActual + 1)}
+                className="btn bg-blue-500 text-white"
+                style={{ padding: '10px 20px', borderRadius: '5px' }}
+              >
+                Siguiente
+              </button>
+            ) : (
+              <button
+                onClick={enviar}
+                className="btn bg-green-600 text-white"
+                style={{ padding: '10px 20px', borderRadius: '5px' }}
+              >
+                Enviar respuestas
+              </button>
+            )}
+          </div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
-          {indiceActual > 0 && (
-            <button
-              onClick={() => setIndiceActual(indiceActual - 1)}
-              className="btn bg-gray-400 text-white"
-              style={{ padding: '10px 20px', borderRadius: '5px' }}
-            >
-              Anterior
-            </button>
-          )}
-          {indiceActual < activo.preguntas.length - 1 ? (
-            <button
-              onClick={() => setIndiceActual(indiceActual + 1)}
-              className="btn bg-blue-500 text-white"
-              style={{ padding: '10px 20px', borderRadius: '5px' }}
-            >
-              Siguiente
-            </button>
-          ) : (
-            <button
-              onClick={enviar}
-              className="btn bg-green-600 text-white"
-              style={{ padding: '10px 20px', borderRadius: '5px' }}
-            >
-              Enviar respuestas
-            </button>
-          )}
+
+        {/* Panel lateral de navegación */}
+        <div style={{
+          flex: 1,
+          border: '1px solid #ddd',
+          borderRadius: '8px',
+          padding: '16px',
+          backgroundColor: '#f9fafb',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '10px',
+          overflowY: 'auto'
+        }}>
+          <h3 className="text-lg font-semibold mb-2 text-center">Navegación</h3>
+          {activo.preguntas.map((p, idx) => {
+            const respondida = respuestas[p.id] !== undefined;
+            return (
+              <button
+                key={p.id}
+                onClick={() => setIndiceActual(idx)}
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  textAlign: 'center',
+                  backgroundColor: idx === indiceActual
+                    ? '#1d4ed8'
+                    : respondida
+                    ? '#16a34a'
+                    : '#d1d5db',
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+                title={`Pregunta ${idx + 1}`}
+              >
+                {idx + 1}
+              </button>
+            );
+          })}
         </div>
       </div>
-
-      {/* Panel lateral de navegación por preguntas */}
-      <div style={{
-        flex: 1,
-        border: '1px solid #ddd',
-        borderRadius: '8px',
-        padding: '16px',
-        backgroundColor: '#f9fafb',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '10px',
-        overflowY: 'auto'
-      }}>
-        <h3 className="text-lg font-semibold mb-2 text-center">Navegación</h3>
-        {activo.preguntas.map((p, idx) => {
-          const respondida = respuestas[p.id] !== undefined;
-          return (
-            <button
-              key={p.id}
-              onClick={() => setIndiceActual(idx)}
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                textAlign: 'center',
-                backgroundColor: idx === indiceActual
-                  ? '#1d4ed8'
-                  : respondida
-                  ? '#16a34a'
-                  : '#d1d5db',
-                color: '#fff',
-                fontWeight: 'bold',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-              title={`Pregunta ${idx + 1}`}
-            >
-              {idx + 1}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
+    );
+  }
 
   // Agrupamos resultados por título de ensayo
   const resultadosAgrupados = resultados.reduce((acc, res) => {
@@ -174,7 +282,7 @@ const Alumno = () => {
       }}>
         <h2 className="text-2xl font-bold mb-4 text-center">Ensayos Disponibles</h2>
 
-        {!ensayoDisponibleSeleccionado && (
+        {!ensayoDisponibleSeleccionado ? (
           ensayos.length === 0 ? (
             <p className="text-center text-gray-600">No hay ensayos aún.</p>
           ) : (
@@ -190,19 +298,20 @@ const Alumno = () => {
                 }}
               >
                 {e.titulo}
+                {e.tiempoMinutos && (
+                  <span style={{ float: 'right', color: '#4b5563' }}>
+                    {e.tiempoMinutos} min
+                  </span>
+                )}
               </button>
             ))
           )
-        )}
-
-        {/* Detalle del ensayo disponible seleccionado */}
-        {ensayoDisponibleSeleccionado && (
+        ) : (
           <div style={{ marginTop: 'auto' }}>
             <h3 className="text-lg font-semibold mb-2">{ensayoDisponibleSeleccionado.titulo}</h3>
             <p><strong>Asignatura:</strong> {ensayoDisponibleSeleccionado.asignatura || 'No especificada'}</p>
-            <p><strong>Descripción:</strong> {ensayoDisponibleSeleccionado.descripcion || 'Sin descripción'}</p>
-            <p><strong>Tiempo:</strong> {ensayoDisponibleSeleccionado.tiempo ? `${ensayoDisponibleSeleccionado.tiempo} minutos` : 'No especificado'}</p>
-            <p><strong>Número de preguntas:</strong> {ensayoDisponibleSeleccionado.preguntas.length}</p>
+            <p><strong>Tiempo:</strong> {ensayoDisponibleSeleccionado.tiempoMinutos ? `${ensayoDisponibleSeleccionado.tiempoMinutos} minutos` : 'Sin límite'}</p>
+            <p><strong>Preguntas:</strong> {ensayoDisponibleSeleccionado.preguntas.length}</p>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
               <button
@@ -213,15 +322,11 @@ const Alumno = () => {
                 Volver
               </button>
               <button
-                onClick={() => {
-                  setActivo(ensayoDisponibleSeleccionado);
-                  setIndiceActual(0);
-                  setEnsayoDisponibleSeleccionado(null);
-                }}
+                onClick={() => comenzarEnsayo(ensayoDisponibleSeleccionado)}
                 className="btn"
                 style={{ backgroundColor: '#3b82f6', color: '#fff', padding: '10px 20px', borderRadius: '5px' }}
               >
-                Comenzar intento
+                Comenzar ensayo
               </button>
             </div>
           </div>
@@ -251,6 +356,9 @@ const Alumno = () => {
                 className="btn w-full mb-3 text-left"
               >
                 {titulo}
+                <span style={{ float: 'right' }}>
+                  {intentos.length} intento{intentos.length !== 1 ? 's' : ''}
+                </span>
               </button>
             ))
           )
@@ -272,7 +380,13 @@ const Alumno = () => {
                 onClick={() => setIntentoSeleccionado(intento)}
                 className="btn w-full mb-2 text-left"
               >
-                Intento {idx + 1} - Puntaje: {intento.puntaje} / {intento.total}
+                Intento {idx + 1} - {intento.puntaje}/{intento.total}
+                {intento.tiempoUsado && (
+                  <span style={{ float: 'right' }}>
+                    {Math.floor(intento.tiempoUsado / 60)}:
+                    {(intento.tiempoUsado % 60).toString().padStart(2, '0')}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -291,6 +405,12 @@ const Alumno = () => {
             <p className="mb-2 text-sm text-gray-700">
               Puntaje: {intentoSeleccionado.puntaje} / {intentoSeleccionado.total}
             </p>
+            {intentoSeleccionado.tiempoUsado && (
+              <p className="mb-2 text-sm text-gray-700">
+                Tiempo: {Math.floor(intentoSeleccionado.tiempoUsado / 60)}:
+                {(intentoSeleccionado.tiempoUsado % 60).toString().padStart(2, '0')}
+              </p>
+            )}
             {intentoSeleccionado.preguntas.map((p, idx) => {
               const elegida = intentoSeleccionado.respuestas[p.id];
               const correcta = p.correcta;
