@@ -349,16 +349,13 @@ const Alumno = () => {
           resultados.length === 0 ? (
             <p className="text-center text-gray-600">No has respondido ensayos todavía.</p>
           ) : (
-            Object.entries(resultadosAgrupados).map(([titulo, intentos]) => (
+            Object.keys(resultadosAgrupados).map((titulo) => (
               <button
                 key={titulo}
-                onClick={() => setEnsayoSeleccionado({ titulo, intentos })}
+                onClick={() => setEnsayoSeleccionado({ titulo, intentos: resultadosAgrupados[titulo] })}
                 className="btn w-full mb-3 text-left"
               >
                 {titulo}
-                <span style={{ float: 'right' }}>
-                  {intentos.length} intento{intentos.length !== 1 ? 's' : ''}
-                </span>
               </button>
             ))
           )
@@ -381,12 +378,6 @@ const Alumno = () => {
                 className="btn w-full mb-2 text-left"
               >
                 Intento {idx + 1} - {intento.puntaje}/{intento.total}
-                {intento.tiempoUsado && (
-                  <span style={{ float: 'right' }}>
-                    {Math.floor(intento.tiempoUsado / 60)}:
-                    {(intento.tiempoUsado % 60).toString().padStart(2, '0')}
-                  </span>
-                )}
               </button>
             ))}
           </div>
