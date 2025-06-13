@@ -1,6 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Profesor = () => {
+  const navigate = useNavigate();
+  
   // Estado para las preguntas
   const [preguntas, setPreguntas] = useState([
     {
@@ -60,6 +63,13 @@ const Profesor = () => {
 
           <button onClick={() => setVista('ensayo')} className="btn w-full">
             Crear Ensayo
+          </button>
+          
+          <button 
+            onClick={() => navigate('/resultados')} 
+            className="btn w-full bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            Ver Resultados
           </button>
         </div>
       )}
@@ -204,9 +214,6 @@ const CrearPregunta = ({ volver, agregarPregunta }) => {
   );
 };
 
-
-
-
 const CrearEnsayo = ({ preguntas, volver }) => {
   const [seleccionadas, setSeleccionadas] = useState([]);
   const [titulo, setTitulo] = useState('');
@@ -235,6 +242,7 @@ const CrearEnsayo = ({ preguntas, volver }) => {
       id: Date.now(),
       titulo,
       tiempoMinutos,
+      asignatura,
       preguntas: preguntas.filter((p) => seleccionadas.includes(p.id)),
     };
     const existentes = JSON.parse(localStorage.getItem('ensayos')) || [];
@@ -288,8 +296,6 @@ const CrearEnsayo = ({ preguntas, volver }) => {
         onChange={(e) => setMaxPreguntas(Number(e.target.value))}
         className="input mb-4"
       />
-
-      
 
       <label className="block font-semibold mb-1">Agrega la(s) pregunta(s)</label>
       <select
@@ -349,6 +355,5 @@ const CrearEnsayo = ({ preguntas, volver }) => {
     </div>
   );
 };
-
 
 export default Profesor;
