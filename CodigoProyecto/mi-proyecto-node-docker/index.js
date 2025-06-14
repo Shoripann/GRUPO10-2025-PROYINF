@@ -150,6 +150,51 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Crear una nueva pregunta con 4 opciones
+app.post('/preguntas', async (req, res) => {
+  const { texto, profesor_id, dificultad, materia, opciones } = req.body;
+
+  if (!texto || !profesor_id || !Array.isArray(opciones) || opciones.length !== 4) {
+    return res.status(400).json({ error: 'Faltan datos o el formato es incorrecto' });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // Insertar la pregunta
+    const preguntaRes = await client.query(
+      `INSERT INTO preguntas (texto, profesor_id, dificultad, materia)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [texto, profesor_id, dificultad, materia]
+    );
+
+    const preguntaId = preguntaRes.rows[0].id;
+
+    // Insertar las 4 opciones
+    for (const opcion of opciones) {
+      const { texto, es_correcta } = opcion;
+      await client.query(
+        `INSERT INTO opciones (pregunta_id, texto, es_correcta)
+         VALUES ($1, $2, $3)`,
+        [preguntaId, texto, es_correcta === true]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.status(201).json({ mensaje: 'Pregunta creada correctamente', pregunta_id: preguntaId });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error al insertar pregunta:', err);
+    res.status(500).json({ error: 'Error interno al crear pregunta' });
+  } finally {
+    client.release();
+  }
+});
+
 
 
 app.listen(port, () => {
