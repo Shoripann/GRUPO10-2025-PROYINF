@@ -3,48 +3,52 @@ import { useNavigate } from 'react-router-dom';
 
 const Profesor = () => {
   const navigate = useNavigate();
-  
-  // Estado para las preguntas
-  const [preguntas, setPreguntas] = useState([
-    {
-      id: 1,
-      pregunta: '¿Cuál es la capital de Francia?',
-      alternativas: ['Madrid', 'París', 'Roma', 'Berlín'],
-      correcta: 1,
-      asignatura: 'Historia',
-      dificultad: 'Fácil',
-    },
-    {
-      id: 2,
-      pregunta: '¿Cuánto es 2 + 2?',
-      alternativas: ['3', '4', '5', '6'],
-      correcta: 1,
-      asignatura: 'Matemáticas',
-      dificultad: 'Fácil',
-    },
-    {
-      id: 3,
-      pregunta: '¿Qué órgano bombea la sangre?',
-      alternativas: ['Cerebro', 'Estómago', 'Corazón', 'Pulmón'],
-      correcta: 2,
-      asignatura: 'Biología',
-      dificultad: 'Media',
-    },
-    {
-      id: 4,
-      pregunta: '¿Cuánto es 3 * 3?',
-      alternativas: ['6', '3', '9', '33'],
-      correcta: 2,
-      asignatura: 'Matemáticas',
-      dificultad: 'Media',
-    },
-  ]);
+
+  // Estado persistente para preguntas
+  const [preguntas, setPreguntas] = useState(() => {
+    const guardadas = localStorage.getItem('preguntas');
+    return guardadas ? JSON.parse(guardadas) : [
+      {
+        id: 1,
+        pregunta: '¿Cuál es la capital de Francia?',
+        alternativas: ['Madrid', 'París', 'Roma', 'Berlín'],
+        correcta: 1,
+        asignatura: 'Historia',
+        dificultad: 'Fácil',
+      },
+      {
+        id: 2,
+        pregunta: '¿Cuánto es 2 + 2?',
+        alternativas: ['3', '4', '5', '6'],
+        correcta: 1,
+        asignatura: 'Matemáticas',
+        dificultad: 'Fácil',
+      },
+      {
+        id: 3,
+        pregunta: '¿Qué órgano bombea la sangre?',
+        alternativas: ['Cerebro', 'Estómago', 'Corazón', 'Pulmón'],
+        correcta: 2,
+        asignatura: 'Biología',
+        dificultad: 'Media',
+      },
+      {
+        id: 4,
+        pregunta: '¿Cuánto es 3 * 3?',
+        alternativas: ['6', '3', '9', '33'],
+        correcta: 2,
+        asignatura: 'Matemáticas',
+        dificultad: 'Media',
+      },
+    ];
+  });
 
   const [vista, setVista] = useState(null);
 
-  // Función para agregar una nueva pregunta
   const agregarPregunta = (nuevaPregunta) => {
-    setPreguntas([...preguntas, { id: Date.now(), ...nuevaPregunta }]);
+    const nuevas = [...preguntas, { id: Date.now(), ...nuevaPregunta }];
+    setPreguntas(nuevas);
+    localStorage.setItem('preguntas', JSON.stringify(nuevas));
   };
 
   return (
@@ -56,17 +60,14 @@ const Profesor = () => {
       ) : (
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full text-center space-y-6">
           <h1 className="text-3xl font-bold text-gray-800">Panel del Profesor</h1>
-
           <button onClick={() => setVista('crearPregunta')} className="btn w-full">
             Crear Pregunta
           </button>
-
           <button onClick={() => setVista('ensayo')} className="btn w-full">
             Crear Ensayo
           </button>
-          
-          <button 
-            onClick={() => navigate('/resultados')} 
+          <button
+            onClick={() => navigate('/resultados')}
             className="btn w-full bg-purple-600 hover:bg-purple-700 text-white"
           >
             Ver Resultados
@@ -85,18 +86,11 @@ const CrearPregunta = ({ volver, agregarPregunta }) => {
   const [dificultad, setDificultad] = useState('');
 
   const guardar = () => {
-    if (
-      !pregunta ||
-      alternativas.some((a) => a === '') ||
-      correcta === null ||
-      !asignatura ||
-      !dificultad
-    ) {
+    if (!pregunta || alternativas.some((a) => a === '') || correcta === null || !asignatura || !dificultad) {
       alert('Completa todo');
       return;
     }
     agregarPregunta({
-      id: Date.now(),
       pregunta,
       alternativas,
       correcta,
@@ -114,30 +108,11 @@ const CrearPregunta = ({ volver, agregarPregunta }) => {
   return (
     <div className="container" style={{ maxWidth: 600, margin: 'auto' }}>
       <h2 className="text-2xl font-semibold mb-4">Nueva Pregunta</h2>
+      <input value={pregunta} onChange={(e) => setPregunta(e.target.value)} placeholder="Escribe la pregunta" className="input mb-4" />
 
-      <input
-        value={pregunta}
-        onChange={(e) => setPregunta(e.target.value)}
-        placeholder="Escribe la pregunta"
-        className="input mb-4"
-      />
-
-      <label
-        className="mb-2 font-medium text-gray-700 block"
-        style={{ marginBottom: '0.5rem' }}
-      >
-        Selecciona la alternativa correcta:
-      </label>
-
+      <label className="mb-2 font-medium text-gray-700 block">Selecciona la alternativa correcta:</label>
       {alternativas.map((alt, i) => (
-        <div
-          key={i}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            marginBottom: '1rem',
-          }}
-        >
+        <div key={i} style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
           <input
             type="text"
             value={alt}
@@ -147,36 +122,14 @@ const CrearPregunta = ({ volver, agregarPregunta }) => {
               setAlternativas(copia);
             }}
             placeholder={`Alternativa ${i + 1}`}
-            style={{
-              flexGrow: 1,
-              padding: '0.5rem',
-              fontSize: '1rem',
-              borderRadius: '0.375rem',
-              border: '1px solid #d1d5db', 
-              marginRight: '1rem',
-            }}
+            style={{ flexGrow: 1, padding: '0.5rem', fontSize: '1rem', borderRadius: '0.375rem', border: '1px solid #d1d5db', marginRight: '1rem' }}
           />
-          <input
-            type="radio"
-            name="correcta"
-            checked={correcta === i}
-            onChange={() => setCorrecta(i)}
-            style={{
-              width: '20px',
-              height: '20px',
-              cursor: 'pointer',
-            }}
-            aria-label={`Seleccionar alternativa correcta ${i + 1}`}
-          />
+          <input type="radio" name="correcta" checked={correcta === i} onChange={() => setCorrecta(i)} style={{ width: '20px', height: '20px' }} />
         </div>
       ))}
 
       <label className="block mt-4">Asignatura</label>
-      <select
-        value={asignatura}
-        onChange={(e) => setAsignatura(e.target.value)}
-        className="input mb-4"
-      >
+      <select value={asignatura} onChange={(e) => setAsignatura(e.target.value)} className="input mb-4">
         <option value="">Selecciona una asignatura</option>
         <option value="Matemáticas">Matemáticas</option>
         <option value="Lenguaje">Lenguaje</option>
@@ -187,11 +140,7 @@ const CrearPregunta = ({ volver, agregarPregunta }) => {
       </select>
 
       <label className="block mb-1">Dificultad</label>
-      <select
-        value={dificultad}
-        onChange={(e) => setDificultad(e.target.value)}
-        className="input mb-4"
-      >
+      <select value={dificultad} onChange={(e) => setDificultad(e.target.value)} className="input mb-4">
         <option value="">Selecciona dificultad</option>
         <option value="Fácil">Fácil</option>
         <option value="Media">Media</option>
@@ -202,11 +151,7 @@ const CrearPregunta = ({ volver, agregarPregunta }) => {
         <button onClick={guardar} className="btn flex-grow">
           Guardar
         </button>
-        <button
-          onClick={volver}
-          className="btn"
-          style={{ backgroundColor: '#6b7280' }}
-        >
+        <button onClick={volver} className="btn" style={{ backgroundColor: '#6b7280' }}>
           Volver
         </button>
       </div>
@@ -219,13 +164,12 @@ const CrearEnsayo = ({ preguntas, volver }) => {
   const [titulo, setTitulo] = useState('');
   const [asignatura, setAsignatura] = useState('');
   const [maxPreguntas, setMaxPreguntas] = useState(5);
-  const [tiempoMinutos, setTiempoMinutos] = useState(30); 
+  const [tiempoMinutos, setTiempoMinutos] = useState(30);
 
   const preguntasFiltradas = preguntas.filter((p) => p.asignatura === asignatura);
 
   const agregarPregunta = (id) => {
-    if (seleccionadas.includes(id)) return;
-    if (seleccionadas.length >= maxPreguntas) return;
+    if (seleccionadas.includes(id) || seleccionadas.length >= maxPreguntas) return;
     setSeleccionadas([...seleccionadas, id]);
   };
 
@@ -256,22 +200,12 @@ const CrearEnsayo = ({ preguntas, volver }) => {
     <div className="container max-w-md mx-auto p-4 bg-white rounded shadow">
       <h2 className="text-2xl font-semibold mb-4">Crear Ensayo</h2>
 
-      <input
-        value={titulo}
-        onChange={(e) => setTitulo(e.target.value)}
-        placeholder="Título del ensayo"
-        className="input mb-4"
-      />
-
+      <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título del ensayo" className="input mb-4" />
       <label className="block mb-1">Selecciona asignatura</label>
-      <select
-        value={asignatura}
-        onChange={(e) => {
-          setAsignatura(e.target.value);
-          setSeleccionadas([]);
-        }}
-        className="input mb-4"
-      >
+      <select value={asignatura} onChange={(e) => {
+        setAsignatura(e.target.value);
+        setSeleccionadas([]);
+      }} className="input mb-4">
         <option value="">-- Seleccionar asignatura --</option>
         <option value="Matemáticas">Matemáticas</option>
         <option value="Lenguaje">Lenguaje</option>
@@ -280,41 +214,24 @@ const CrearEnsayo = ({ preguntas, volver }) => {
         <option value="Química">Química</option>
         <option value="Historia">Historia</option>
       </select>
+
       <label className="block mb-1">Tiempo (minutos)</label>
-      <input
-        type="number"
-        min="1"
-        value={tiempoMinutos}
-        onChange={(e) => setTiempoMinutos(Number(e.target.value))}
-        className="input mb-4"
-      />
+      <input type="number" min="1" value={tiempoMinutos} onChange={(e) => setTiempoMinutos(Number(e.target.value))} className="input mb-4" />
       <label className="block mb-1">Número máximo de preguntas</label>
-      <input
-        type="number"
-        min="1"
-        value={maxPreguntas}
-        onChange={(e) => setMaxPreguntas(Number(e.target.value))}
-        className="input mb-4"
-      />
+      <input type="number" min="1" value={maxPreguntas} onChange={(e) => setMaxPreguntas(Number(e.target.value))} className="input mb-4" />
 
       <label className="block font-semibold mb-1">Agrega la(s) pregunta(s)</label>
-      <select
-        onChange={(e) => {
-          const id = Number(e.target.value);
-          if (id) agregarPregunta(id);
-          e.target.value = '';
-        }}
-        className="input mb-4"
-        disabled={preguntasFiltradas.length === 0 || seleccionadas.length >= maxPreguntas}
-      >
+      <select onChange={(e) => {
+        const id = Number(e.target.value);
+        if (id) agregarPregunta(id);
+        e.target.value = '';
+      }} className="input mb-4" disabled={preguntasFiltradas.length === 0 || seleccionadas.length >= maxPreguntas}>
         <option value="">-- Seleccionar pregunta --</option>
-        {preguntasFiltradas
-          .filter((p) => !seleccionadas.includes(p.id))
-          .map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.pregunta} (Dificultad: {p.dificultad})
-            </option>
-          ))}
+        {preguntasFiltradas.filter((p) => !seleccionadas.includes(p.id)).map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.pregunta} (Dificultad: {p.dificultad})
+          </option>
+        ))}
       </select>
 
       {preguntasFiltradas.length === 0 && (
@@ -325,19 +242,14 @@ const CrearEnsayo = ({ preguntas, volver }) => {
         <div className="mb-4">
           <h4 className="font-medium mb-2">Preguntas seleccionadas:</h4>
           <ul className="list-disc ml-6">
-            {preguntas
-              .filter((p) => seleccionadas.includes(p.id))
-              .map((p) => (
-                <li key={p.id}>
-                  {p.pregunta}{' '}
-                  <button
-                    onClick={() => eliminarPregunta(p.id)}
-                    className="text-red-500 text-sm ml-2 underline"
-                  >
-                    Quitar
-                  </button>
-                </li>
-              ))}
+            {preguntas.filter((p) => seleccionadas.includes(p.id)).map((p) => (
+              <li key={p.id}>
+                {p.pregunta}
+                <button onClick={() => eliminarPregunta(p.id)} className="text-red-500 text-sm ml-2 underline">
+                  Quitar
+                </button>
+              </li>
+            ))}
           </ul>
         </div>
       )}
@@ -345,11 +257,7 @@ const CrearEnsayo = ({ preguntas, volver }) => {
       <button onClick={guardarEnsayo} className="btn mt-2 w-full">
         Guardar Ensayo
       </button>
-      <button
-        onClick={volver}
-        className="btn"
-        style={{ backgroundColor: '#6b7280', marginLeft: '10px' }}
-      >
+      <button onClick={volver} className="btn" style={{ backgroundColor: '#6b7280', marginLeft: '10px' }}>
         Volver
       </button>
     </div>
