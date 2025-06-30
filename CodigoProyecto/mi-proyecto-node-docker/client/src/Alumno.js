@@ -1,35 +1,51 @@
 import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 
-const Alumno = () => {
-  const ensayos = JSON.parse(localStorage.getItem('ensayos')) || [];
-  const resultados = JSON.parse(localStorage.getItem('resultados')) || [];
+const Alumno = ({ alumnoId }) => {
+  const [ensayosDisponibles, setEnsayosDisponibles] = useState([]);
+  const [ensayosRealizados, setEnsayosRealizados] = useState([]);
+  const [resultados, setResultados] = useState([]);
 
-  const [activo, setActivo] = useState(null);
+  const [ensayoActivo, setEnsayoActivo] = useState(null);
   const [respuestas, setRespuestas] = useState({});
   const [indiceActual, setIndiceActual] = useState(0);
   const [tiempoRestante, setTiempoRestante] = useState(null);
   const intervalRef = useRef(null);
-  const activoRef = useRef(null);
 
-  // Estados para resultados e intentos
+  // Estados para navegación
   const [ensayoSeleccionado, setEnsayoSeleccionado] = useState(null);
   const [intentoSeleccionado, setIntentoSeleccionado] = useState(null);
-  const [ensayoDisponibleSeleccionado, setEnsayoDisponibleSeleccionado] = useState(null);
 
-  // Actualizar la referencia cuando activo cambia
+  // Cargar datos iniciales
   useEffect(() => {
-    activoRef.current = activo;
-  }, [activo]);
+    const cargarDatos = async () => {
+      try {
+        // Obtener ensayos disponibles (sin alumno asignado)
+        const resDisponibles = await axios.get('http://localhost:3000/api/ensayos/disponibles');
+        setEnsayosDisponibles(resDisponibles.data);
 
-  // Función para iniciar el temporizador
+        // Obtener ensayos realizados por el alumno
+        const resRealizados = await axios.get(`http://localhost:3000/api/ensayos/alumno/${alumnoId}`);
+        setEnsayosRealizados(resRealizados.data);
+
+        // Obtener resultados del alumno
+        const resResultados = await axios.get(`http://localhost:3000/api/resultados/alumno/${alumnoId}`);
+        setResultados(resResultados.data);
+      } catch (error) {
+        console.error('Error al cargar datos:', error);
+      }
+    };
+
+    cargarDatos();
+  }, [alumnoId]);
+
+  // Temporizador
   const iniciarTemporizador = (minutos) => {
     let segundos = minutos * 60;
     setTiempoRestante(segundos);
-    
-    // Limpiar intervalo anterior si existe
+
     if (intervalRef.current) clearInterval(intervalRef.current);
-    
-    // Configurar nuevo intervalo
+
     intervalRef.current = setInterval(() => {
       setTiempoRestante(prev => {
         if (prev <= 1) {
@@ -42,109 +58,124 @@ const Alumno = () => {
     }, 1000);
   };
 
-  // Función cuando el tiempo termina
   const tiempoTerminado = () => {
-    const ensayoActual = activoRef.current;
-    if (!ensayoActual) return;
-
-    const correctas = ensayoActual.preguntas.filter(p => respuestas[p.id] === p.correcta).length;
-
-    const resultado = {
-      id: Date.now(),
-      titulo: ensayoActual.titulo,
-      preguntas: ensayoActual.preguntas,
-      respuestas: respuestas,
-      puntaje: correctas,
-      total: ensayoActual.preguntas.length,
-      tiempoUsado: ensayoActual.tiempoMinutos ? (ensayoActual.tiempoMinutos * 60) : null
-    };
-
-    const anteriores = JSON.parse(localStorage.getItem('resultados')) || [];
-    anteriores.push(resultado);
-    localStorage.setItem('resultados', JSON.stringify(anteriores));
-
-    alert(`¡Tiempo terminado!\nRespuestas correctas: ${correctas} de ${ensayoActual.preguntas.length}`);
-
-    // Limpiar estados
-    setActivo(null);
-    setRespuestas({});
-    setIndiceActual(0);
-    setTiempoRestante(null);
-    clearInterval(intervalRef.current);
-    intervalRef.current = null;
+    alert('¡Tiempo terminado! Enviando respuestas...');
+    enviarRespuestas();
   };
 
-  const comenzarEnsayo = (ensayo) => {
-    setActivo(ensayo);
-    setIndiceActual(0);
-    setEnsayoDisponibleSeleccionado(null);
-    setRespuestas({});
-    
-    if (ensayo.tiempoMinutos) {
-      iniciarTemporizador(ensayo.tiempoMinutos);
+  // Comenzar un ensayo
+  const comenzarEnsayo = async (ensayo) => {
+    try {
+      // Obtener preguntas del ensayo con sus opciones
+      const res = await axios.get(`http://localhost:3000/api/ensayos/${ensayo.id}/preguntas`);
+      
+      // Asignar el ensayo al alumno antes de comenzar
+      await axios.patch(`http://localhost:3000/api/ensayos/${ensayo.id}/asignar`, {
+        alumno_id: alumnoId
+      });
+
+      setEnsayoActivo({
+        ...ensayo,
+        preguntas: res.data.map(p => ({
+          id: p.id,
+          texto: p.texto,
+          opciones: p.opciones.map((o, index) => ({
+            id: o.id,
+            texto: o.texto,
+            esCorrecta: o.es_correcta,
+            index
+          }))
+        }))
+      });
+      
+      setIndiceActual(0);
+      setRespuestas({});
+      
+      if (ensayo.tiempoMinutos) {
+        iniciarTemporizador(ensayo.tiempoMinutos);
+      }
+    } catch (error) {
+      console.error('Error al comenzar ensayo:', error);
+      alert('Error al cargar el ensayo');
     }
   };
 
-  const seleccionarRespuesta = (pregId, altIdx) => {
-    setRespuestas({ ...respuestas, [pregId]: altIdx });
+  const seleccionarRespuesta = (preguntaId, opcionIndex) => {
+    setRespuestas(prev => ({
+      ...prev,
+      [preguntaId]: opcionIndex
+    }));
   };
 
-  const enviar = () => {
-    if (!activo) return;
+  const enviarRespuestas = async () => {
+    if (!ensayoActivo) return;
 
-    const correctas = activo.preguntas.filter(p => respuestas[p.id] === p.correcta).length;
+    try {
+      // Calcular puntaje
+      let correctas = 0;
+      ensayoActivo.preguntas.forEach(pregunta => {
+        const respuestaSeleccionada = respuestas[pregunta.id];
+        if (respuestaSeleccionada !== undefined && 
+            pregunta.opciones[respuestaSeleccionada].esCorrecta) {
+          correctas++;
+        }
+      });
 
-    const resultado = {
-      id: Date.now(),
-      titulo: activo.titulo,
-      preguntas: activo.preguntas,
-      respuestas: respuestas,
-      puntaje: correctas,
-      total: activo.preguntas.length,
-      tiempoUsado: activo.tiempoMinutos ? (activo.tiempoMinutos * 60 - tiempoRestante) : null
-    };
+      const puntaje = (correctas / ensayoActivo.preguntas.length) * 100;
 
-    const anteriores = JSON.parse(localStorage.getItem('resultados')) || [];
-    anteriores.push(resultado);
-    localStorage.setItem('resultados', JSON.stringify(anteriores));
+      // Guardar resultado
+      await axios.post('http://localhost:3000/api/resultados', {
+        ensayo_id: ensayoActivo.id,
+        alumno_id: alumnoId,
+        puntaje: puntaje,
+        respuestas: JSON.stringify(respuestas)
+      });
 
-    alert(`Respuestas correctas: ${correctas} de ${activo.preguntas.length}`);
+      // Actualizar lista de ensayos realizados
+      const res = await axios.get(`http://localhost:3000/api/ensayos/alumno/${alumnoId}`);
+      setEnsayosRealizados(res.data);
 
-    setActivo(null);
-    setRespuestas({});
-    setIndiceActual(0);
-    setTiempoRestante(null);
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+      // Limpiar estado
+      setEnsayoActivo(null);
+      setRespuestas({});
+      setIndiceActual(0);
+      setTiempoRestante(null);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+
+      alert(`Has respondido ${correctas} de ${ensayoActivo.preguntas.length} correctamente (${puntaje.toFixed(2)}%)`);
+    } catch (error) {
+      console.error('Error al enviar respuestas:', error);
+      alert('Error al guardar el resultado');
     }
   };
 
-  // Limpiar intervalo al desmontar
+  // Limpieza al desmontar
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
 
-  if (activo) {
-    const pregunta = activo.preguntas[indiceActual];
-    
-    const formatTiempo = (segundos) => {
-      const mins = Math.floor(segundos / 60);
-      const secs = segundos % 60;
-      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-    };
+  // Formatear tiempo
+  const formatTiempo = (segundos) => {
+    const mins = Math.floor(segundos / 60);
+    const secs = segundos % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  // Vista de ensayo activo
+  if (ensayoActivo) {
+    const preguntaActual = ensayoActivo.preguntas[indiceActual];
 
     return (
-      <div style={{ display: 'flex', height: '90vh', padding: '20px', maxWidth: '960px', margin: '0 auto', gap: '20px' }}>
-        
-        {/* Panel principal con la pregunta */}
+      <div style={{ display: 'flex', height: '90vh', padding: '20px', maxWidth: '1200px', margin: '0 auto', gap: '20px' }}>
+        {/* Panel principal */}
         <div style={{ flex: 3, border: '1px solid #ddd', borderRadius: '8px', padding: '20px', backgroundColor: '#fff' }}>
           {tiempoRestante !== null && (
             <div style={{
-              position: 'sticky',
-              top: 0,
               backgroundColor: tiempoRestante <= 60 ? '#fee2e2' : '#ecfdf5',
               padding: '10px',
               borderRadius: '5px',
@@ -157,274 +188,327 @@ const Alumno = () => {
             </div>
           )}
           
-          <h2 className="text-2xl font-bold mb-4">{activo.titulo}</h2>
-          <p className="mb-2 font-semibold">Pregunta {indiceActual + 1} de {activo.preguntas.length}</p>
-          <p className="mb-4">{pregunta.pregunta}</p>
-          <div className="mb-4">
-            {pregunta.alternativas.map((alt, i) => (
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+            {ensayoActivo.titulo}
+          </h2>
+          
+          <p style={{ marginBottom: '0.5rem', fontWeight: '600' }}>
+            Pregunta {indiceActual + 1} de {ensayoActivo.preguntas.length}
+          </p>
+          
+          <p style={{ marginBottom: '1.5rem', fontSize: '1.1rem' }}>
+            {preguntaActual.texto}
+          </p>
+          
+          <div style={{ marginBottom: '1.5rem' }}>
+            {preguntaActual.opciones.map((opcion, index) => (
               <button
-                key={i}
-                onClick={() => seleccionarRespuesta(pregunta.id, i)}
+                key={opcion.id}
+                onClick={() => seleccionarRespuesta(preguntaActual.id, index)}
                 style={{
                   display: 'block',
-                  padding: '10px',
-                  marginBottom: '10px',
-                  backgroundColor: respuestas[pregunta.id] === i ? '#3b82f6' : '#e5e7eb',
-                  color: respuestas[pregunta.id] === i ? '#fff' : '#000',
-                  borderRadius: '5px',
-                  border: '1px solid #ccc',
-                  textAlign: 'left',
                   width: '100%',
+                  padding: '12px',
+                  marginBottom: '10px',
+                  textAlign: 'left',
+                  borderRadius: '6px',
+                  border: '1px solid #ddd',
+                  backgroundColor: respuestas[preguntaActual.id] === index ? '#3b82f6' : '#f9fafb',
+                  color: respuestas[preguntaActual.id] === index ? 'white' : '#333',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
                 }}
               >
-                {alt}
+                {opcion.texto}
               </button>
             ))}
           </div>
+          
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
-            {indiceActual > 0 && (
+            <button
+              onClick={() => setIndiceActual(prev => Math.max(0, prev - 1))}
+              disabled={indiceActual === 0}
+              style={{
+                padding: '10px 20px',
+                borderRadius: '6px',
+                backgroundColor: '#e5e7eb',
+                color: '#4b5563',
+                border: 'none',
+                cursor: 'pointer',
+                opacity: indiceActual === 0 ? 0.5 : 1
+              }}
+            >
+              Anterior
+            </button>
+            
+            {indiceActual < ensayoActivo.preguntas.length - 1 ? (
               <button
-                onClick={() => setIndiceActual(indiceActual - 1)}
-                className="btn bg-gray-400 text-white"
-                style={{ padding: '10px 20px', borderRadius: '5px' }}
-              >
-                Anterior
-              </button>
-            )}
-            {indiceActual < activo.preguntas.length - 1 ? (
-              <button
-                onClick={() => setIndiceActual(indiceActual + 1)}
-                className="btn bg-blue-500 text-white"
-                style={{ padding: '10px 20px', borderRadius: '5px' }}
+                onClick={() => setIndiceActual(prev => prev + 1)}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '6px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
               >
                 Siguiente
               </button>
             ) : (
               <button
-                onClick={enviar}
-                className="btn bg-green-600 text-white"
-                style={{ padding: '10px 20px', borderRadius: '5px' }}
+                onClick={enviarRespuestas}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '6px',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
               >
                 Enviar respuestas
               </button>
             )}
           </div>
         </div>
-
-        {/* Panel lateral de navegación */}
+        
+        {/* Panel de navegación */}
         <div style={{
           flex: 1,
           border: '1px solid #ddd',
           borderRadius: '8px',
           padding: '16px',
           backgroundColor: '#f9fafb',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '10px',
           overflowY: 'auto'
         }}>
-          <h3 className="text-lg font-semibold mb-2 text-center">Navegación</h3>
-          {activo.preguntas.map((p, idx) => {
-            const respondida = respuestas[p.id] !== undefined;
-            return (
+          <h3 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '1rem', textAlign: 'center' }}>
+            Navegación
+          </h3>
+          
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '10px'
+          }}>
+            {ensayoActivo.preguntas.map((pregunta, index) => (
               <button
-                key={p.id}
-                onClick={() => setIndiceActual(idx)}
+                key={pregunta.id}
+                onClick={() => setIndiceActual(index)}
                 style={{
                   width: '40px',
                   height: '40px',
                   borderRadius: '50%',
-                  textAlign: 'center',
-                  backgroundColor: idx === indiceActual
-                    ? '#1d4ed8'
-                    : respondida
-                    ? '#16a34a'
-                    : '#d1d5db',
-                  color: '#fff',
-                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: index === indiceActual 
+                    ? '#1d4ed8' 
+                    : respuestas[pregunta.id] !== undefined 
+                      ? '#10b981' 
+                      : '#e5e7eb',
+                  color: index === indiceActual || respuestas[pregunta.id] !== undefined 
+                    ? 'white' 
+                    : '#4b5563',
                   border: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontWeight: '600'
                 }}
-                title={`Pregunta ${idx + 1}`}
+                title={`Pregunta ${index + 1}`}
               >
-                {idx + 1}
+                {index + 1}
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
-  // Agrupamos resultados por título de ensayo
-  const resultadosAgrupados = resultados.reduce((acc, res) => {
-    if (!acc[res.titulo]) acc[res.titulo] = [];
-    acc[res.titulo].push(res);
-    return acc;
-  }, {});
-
+  // Vista principal (sin ensayo activo)
   return (
-    <div style={{ display: 'flex', padding: '20px', gap: '20px', maxWidth: '960px', margin: '0 auto' }}>
-      
-      {/* Columna izquierda: Ensayos Disponibles */}
+    <div style={{ 
+      display: 'flex', 
+      padding: '20px', 
+      gap: '20px', 
+      maxWidth: '1200px', 
+      margin: '0 auto',
+      minHeight: '80vh'
+    }}>
+      {/* Ensayos disponibles */}
       <div style={{
         flex: 1,
         border: '1px solid #ddd',
         borderRadius: '8px',
         padding: '16px',
-        height: '80vh',
-        overflowY: 'auto',
-        backgroundColor: '#f9fafb',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
+        backgroundColor: '#f9fafb'
       }}>
-        <h2 className="text-2xl font-bold mb-4 text-center">Ensayos Disponibles</h2>
-
-        {!ensayoDisponibleSeleccionado ? (
-          ensayos.length === 0 ? (
-            <p className="text-center text-gray-600">No hay ensayos aún.</p>
-          ) : (
-            ensayos.map(e => (
-              <button
-                key={e.id}
-                onClick={() => setEnsayoDisponibleSeleccionado(e)}
-                className="btn w-full"
-                style={{
-                  textAlign: 'left',
-                  display: 'block',
-                  padding: '12px',
-                }}
-              >
-                {e.titulo}
-                {e.tiempoMinutos && (
-                  <span style={{ float: 'right', color: '#4b5563' }}>
-                    {e.tiempoMinutos} min
-                  </span>
-                )}
-              </button>
-            ))
-          )
+        <h2 style={{ 
+          fontSize: '1.5rem', 
+          fontWeight: 'bold', 
+          marginBottom: '1rem',
+          textAlign: 'center'
+        }}>
+          Ensayos Disponibles
+        </h2>
+        
+        {ensayosDisponibles.length === 0 ? (
+          <p style={{ textAlign: 'center', color: '#6b7280' }}>No hay ensayos disponibles actualmente.</p>
         ) : (
-          <div style={{ marginTop: 'auto' }}>
-            <h3 className="text-lg font-semibold mb-2">{ensayoDisponibleSeleccionado.titulo}</h3>
-            <p><strong>Asignatura:</strong> {ensayoDisponibleSeleccionado.asignatura || 'No especificada'}</p>
-            <p><strong>Tiempo:</strong> {ensayoDisponibleSeleccionado.tiempoMinutos ? `${ensayoDisponibleSeleccionado.tiempoMinutos} minutos` : 'Sin límite'}</p>
-            <p><strong>Preguntas:</strong> {ensayoDisponibleSeleccionado.preguntas.length}</p>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
-              <button
-                onClick={() => setEnsayoDisponibleSeleccionado(null)}
-                className="btn"
-                style={{ backgroundColor: '#9ca3af', color: '#fff', padding: '10px 20px', borderRadius: '5px' }}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {ensayosDisponibles.map(ensayo => (
+              <div 
+                key={ensayo.id}
+                style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  padding: '12px',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                  transition: 'box-shadow 0.2s',
+                  ':hover': {
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  }
+                }}
+                onClick={() => comenzarEnsayo(ensayo)}
               >
-                Volver
-              </button>
-              <button
-                onClick={() => comenzarEnsayo(ensayoDisponibleSeleccionado)}
-                className="btn"
-                style={{ backgroundColor: '#3b82f6', color: '#fff', padding: '10px 20px', borderRadius: '5px' }}
-              >
-                Comenzar ensayo
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Columna derecha: Ensayos Respondidos */}
-      <div style={{
-        flex: 1,
-        border: '1px solid #ddd',
-        borderRadius: '8px',
-        padding: '16px',
-        height: '80vh',
-        overflowY: 'auto',
-        backgroundColor: '#f3f4f6'
-      }}>
-        <h2 className="text-2xl font-bold mb-4 text-center">Ensayos Respondidos</h2>
-
-        {!ensayoSeleccionado && !intentoSeleccionado && (
-          resultados.length === 0 ? (
-            <p className="text-center text-gray-600">No has respondido ensayos todavía.</p>
-          ) : (
-            Object.keys(resultadosAgrupados).map((titulo) => (
-              <button
-                key={titulo}
-                onClick={() => setEnsayoSeleccionado({ titulo, intentos: resultadosAgrupados[titulo] })}
-                className="btn w-full mb-3 text-left"
-              >
-                {titulo}
-              </button>
-            ))
-          )
-        )}
-
-        {/* Mostrar intentos del ensayo seleccionado */}
-        {ensayoSeleccionado && !intentoSeleccionado && (
-          <div>
-            <button
-              onClick={() => setEnsayoSeleccionado(null)}
-              className="btn mb-4 bg-gray-400 hover:bg-gray-500"
-            >
-              ← Volver a la lista de ensayos respondidos
-            </button>
-            <h3 className="text-lg font-semibold mb-2">{ensayoSeleccionado.titulo} - Intentos</h3>
-            {ensayoSeleccionado.intentos.map((intento, idx) => (
-              <button
-                key={intento.id}
-                onClick={() => setIntentoSeleccionado(intento)}
-                className="btn w-full mb-2 text-left"
-              >
-                Intento {idx + 1} - {intento.puntaje}/{intento.total}
-              </button>
+                <h3 style={{ fontWeight: '600', marginBottom: '4px' }}>{ensayo.titulo}</h3>
+                <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                  {ensayo.asignatura || 'Sin asignatura especificada'}
+                </p>
+                {ensayo.tiempoMinutos && (
+                  <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                    Tiempo: {ensayo.tiempoMinutos} minutos
+                  </p>
+                )}
+                <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                  Preguntas: {ensayo.num_preguntas}
+                </p>
+              </div>
             ))}
           </div>
         )}
-
-        {/* Mostrar detalle del intento seleccionado */}
-        {intentoSeleccionado && (
-          <div>
-            <button
-              onClick={() => setIntentoSeleccionado(null)}
-              className="btn mb-4 bg-gray-400 hover:bg-gray-500"
-            >
-              ← Volver a intentos
-            </button>
-            <h3 className="text-lg font-semibold mb-2">{intentoSeleccionado.titulo}</h3>
-            <p className="mb-2 text-sm text-gray-700">
-              Puntaje: {intentoSeleccionado.puntaje} / {intentoSeleccionado.total}
-            </p>
-            {intentoSeleccionado.tiempoUsado && (
-              <p className="mb-2 text-sm text-gray-700">
-                Tiempo: {Math.floor(intentoSeleccionado.tiempoUsado / 60)}:
-                {(intentoSeleccionado.tiempoUsado % 60).toString().padStart(2, '0')}
-              </p>
-            )}
-            {intentoSeleccionado.preguntas.map((p, idx) => {
-              const elegida = intentoSeleccionado.respuestas[p.id];
-              const correcta = p.correcta;
+      </div>
+      
+      {/* Ensayos realizados */}
+      <div style={{
+        flex: 1,
+        border: '1px solid #ddd',
+        borderRadius: '8px',
+        padding: '16px',
+        backgroundColor: '#f3f4f6'
+      }}>
+        <h2 style={{ 
+          fontSize: '1.5rem', 
+          fontWeight: 'bold', 
+          marginBottom: '1rem',
+          textAlign: 'center'
+        }}>
+          Ensayos Realizados
+        </h2>
+        
+        {ensayosRealizados.length === 0 ? (
+          <p style={{ textAlign: 'center', color: '#6b7280' }}>No has realizado ningún ensayo aún.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {ensayosRealizados.map(ensayo => {
+              const resultado = resultados.find(r => r.ensayo_id === ensayo.id);
               return (
-                <div key={p.id} className="mb-3">
-                  <p className="font-semibold">{idx + 1}. {p.pregunta}</p>
-                  {p.alternativas.map((alt, i) => (
-                    <p
-                      key={i}
-                      className={`ml-4 text-sm ${
-                        i === correcta
-                          ? 'text-green-700 font-bold'
-                          : i === elegida
-                          ? 'text-red-600 font-bold'
-                          : 'text-gray-700'
-                      }`}
-                    >
-                      {i === correcta ? '✔️' : i === elegida ? '❌' : '•'} {alt}
+                <div 
+                  key={ensayo.id}
+                  style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '6px',
+                    padding: '12px',
+                    backgroundColor: 'white',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setEnsayoSeleccionado({ ensayo, resultado })}
+                >
+                  <h3 style={{ fontWeight: '600', marginBottom: '4px' }}>{ensayo.titulo}</h3>
+                  <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                    {ensayo.asignatura || 'Sin asignatura especificada'}
+                  </p>
+                  {resultado && (
+                    <p style={{ 
+                      color: resultado.puntaje >= 70 ? '#10b981' : '#ef4444',
+                      fontWeight: '500'
+                    }}>
+                      Puntaje: {resultado.puntaje.toFixed(2)}%
                     </p>
-                  ))}
+                  )}
                 </div>
               );
             })}
+          </div>
+        )}
+        
+        {/* Detalle del ensayo seleccionado */}
+        {ensayoSeleccionado && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              padding: '24px',
+              borderRadius: '8px',
+              maxWidth: '600px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflowY: 'auto'
+            }}>
+              <h3 style={{ 
+                fontSize: '1.3rem', 
+                fontWeight: 'bold', 
+                marginBottom: '1rem'
+              }}>
+                {ensayoSeleccionado.ensayo.titulo}
+              </h3>
+              
+              <p style={{ marginBottom: '0.5rem' }}>
+                <strong>Asignatura:</strong> {ensayoSeleccionado.ensayo.asignatura || 'No especificada'}
+              </p>
+              
+              <p style={{ marginBottom: '0.5rem' }}>
+                <strong>Fecha:</strong> {new Date(ensayoSeleccionado.ensayo.fecha).toLocaleDateString()}
+              </p>
+              
+              {ensayoSeleccionado.resultado && (
+                <>
+                  <p style={{ marginBottom: '0.5rem' }}>
+                    <strong>Puntaje:</strong> {ensayoSeleccionado.resultado.puntaje.toFixed(2)}%
+                  </p>
+                  
+                  <p style={{ marginBottom: '1.5rem' }}>
+                    <strong>Fecha de realización:</strong> {new Date(ensayoSeleccionado.resultado.fecha).toLocaleDateString()}
+                  </p>
+                </>
+              )}
+              
+              <button
+                onClick={() => setEnsayoSeleccionado(null)}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  marginTop: '1rem'
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         )}
       </div>

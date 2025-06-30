@@ -1,55 +1,58 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+ import axios from 'axios';
 
 const Profesor = () => {
+  const [preguntas, setPreguntas] = useState([]);
+  const [vista, setVista] = useState(null);
   const navigate = useNavigate();
 
-  // Estado persistente para preguntas
-  const [preguntas, setPreguntas] = useState(() => {
-    const guardadas = localStorage.getItem('preguntas');
-    return guardadas ? JSON.parse(guardadas) : [
-      {
-        id: 1,
-        pregunta: '¿Cuál es la capital de Francia?',
-        alternativas: ['Madrid', 'París', 'Roma', 'Berlín'],
-        correcta: 1,
-        asignatura: 'Historia',
-        dificultad: 'Fácil',
-      },
-      {
-        id: 2,
-        pregunta: '¿Cuánto es 2 + 2?',
-        alternativas: ['3', '4', '5', '6'],
-        correcta: 1,
-        asignatura: 'Matemáticas',
-        dificultad: 'Fácil',
-      },
-      {
-        id: 3,
-        pregunta: '¿Qué órgano bombea la sangre?',
-        alternativas: ['Cerebro', 'Estómago', 'Corazón', 'Pulmón'],
-        correcta: 2,
-        asignatura: 'Biología',
-        dificultad: 'Media',
-      },
-      {
-        id: 4,
-        pregunta: '¿Cuánto es 3 * 3?',
-        alternativas: ['6', '3', '9', '33'],
-        correcta: 2,
-        asignatura: 'Matemáticas',
-        dificultad: 'Media',
-      },
-    ];
-  });
+  useEffect(() => {
+    axios.get('http://localhost:3000/api/preguntas')
+      .then(res => setPreguntas(res.data))
+      .catch(err => console.error('Error al cargar preguntas:', err));
+  }, []);
 
-  const [vista, setVista] = useState(null);
+  const agregarPregunta = async (nuevaPregunta) => {
+  try {
+    // Paso 1: Guardar la pregunta
+    const res = await axios.post('http://localhost:3000/api/preguntas', {
+      texto: nuevaPregunta.pregunta,
+      dificultad: nuevaPregunta.dificultad,
+      materia: nuevaPregunta.asignatura,
+      profesor_id: 1 // ← Puedes reemplazar esto con el ID real del profesor autenticado
+    });
 
-  const agregarPregunta = (nuevaPregunta) => {
-    const nuevas = [...preguntas, { id: Date.now(), ...nuevaPregunta }];
-    setPreguntas(nuevas);
-    localStorage.setItem('preguntas', JSON.stringify(nuevas));
-  };
+    const preguntaId = res.data.id;
+
+    // Paso 2: Guardar las alternativas
+    for (let i = 0; i < nuevaPregunta.alternativas.length; i++) {
+      await axios.post('http://localhost:3000/api/opciones', {
+        pregunta_id: preguntaId,
+        texto: nuevaPregunta.alternativas[i],
+        es_correcta: i === nuevaPregunta.correcta
+      });
+    }
+
+    // Paso 3: Actualizar el estado con la nueva pregunta
+    const nueva = {
+      id: preguntaId,
+      pregunta: nuevaPregunta.pregunta,
+      alternativas: nuevaPregunta.alternativas,
+      correcta: nuevaPregunta.correcta,
+      asignatura: nuevaPregunta.asignatura,
+      dificultad: nuevaPregunta.dificultad
+    };
+
+    setPreguntas(prev => [...prev, nueva]);
+    alert('✅ Pregunta guardada correctamente');
+  } catch (err) {
+    console.error('❌ Error al guardar la pregunta:', err);
+    alert('Error al guardar la pregunta');
+  }
+};
+
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4">
@@ -85,25 +88,45 @@ const CrearPregunta = ({ volver, agregarPregunta }) => {
   const [asignatura, setAsignatura] = useState('');
   const [dificultad, setDificultad] = useState('');
 
-  const guardar = () => {
-    if (!pregunta || alternativas.some((a) => a === '') || correcta === null || !asignatura || !dificultad) {
-      alert('Completa todo');
-      return;
-    }
-    agregarPregunta({
-      pregunta,
-      alternativas,
-      correcta,
-      asignatura,
+
+const guardar = async () => {
+  if (!pregunta || alternativas.some((a) => a === '') || correcta === null || !asignatura || !dificultad) {
+    alert('Completa todo');
+    return;
+  }
+
+  try {
+    // Paso 1: Guardar la pregunta
+    const res = await axios.post('http://localhost:3000/api/preguntas', {
+      texto: pregunta,
       dificultad,
+      materia: asignatura,
+      profesor_id: 1 // ← Aquí puedes usar el ID del profesor autenticado
     });
+
+    const preguntaId = res.data.id;
+
+    // Paso 2: Guardar las alternativas
+    for (let i = 0; i < alternativas.length; i++) {
+      await axios.post('http://localhost:3000/api/opciones', {
+        pregunta_id: preguntaId,
+        texto: alternativas[i],
+        es_correcta: i === correcta
+      });
+    }
+
     alert('Pregunta guardada correctamente');
     setPregunta('');
     setAlternativas(['', '', '', '']);
     setCorrecta(null);
     setAsignatura('');
     setDificultad('');
-  };
+  } catch (err) {
+    console.error(err);
+    alert('Error al guardar la pregunta');
+  }
+};
+
 
   return (
     <div className="container" style={{ maxWidth: 600, margin: 'auto' }}>
@@ -166,7 +189,7 @@ const CrearEnsayo = ({ preguntas, volver }) => {
   const [maxPreguntas, setMaxPreguntas] = useState(5);
   const [tiempoMinutos, setTiempoMinutos] = useState(30);
 
-  const preguntasFiltradas = preguntas.filter((p) => p.asignatura === asignatura);
+  const preguntasFiltradas = preguntas.filter((p) => p.materia === asignatura);
 
   const agregarPregunta = (id) => {
     if (seleccionadas.includes(id) || seleccionadas.length >= maxPreguntas) return;
@@ -177,24 +200,29 @@ const CrearEnsayo = ({ preguntas, volver }) => {
     setSeleccionadas(seleccionadas.filter((pid) => pid !== id));
   };
 
-  const guardarEnsayo = () => {
-    if (!titulo || seleccionadas.length === 0 || !asignatura || !tiempoMinutos) {
-      alert('Agrega un título, selecciona asignatura, preguntas y tiempo.');
-      return;
-    }
-    const ensayo = {
-      id: Date.now(),
+  const guardarEnsayo = async () => {
+  if (!titulo || seleccionadas.length === 0 || !asignatura || !tiempoMinutos) {
+    alert('Agrega un título, selecciona asignatura, preguntas y tiempo.');
+    return;
+  }
+
+  try {
+    await axios.post('http://localhost:3000/api/ensayos', {
       titulo,
-      tiempoMinutos,
       asignatura,
-      preguntas: preguntas.filter((p) => seleccionadas.includes(p.id)),
-    };
-    const existentes = JSON.parse(localStorage.getItem('ensayos')) || [];
-    existentes.push(ensayo);
-    localStorage.setItem('ensayos', JSON.stringify(existentes));
-    alert('Ensayo guardado.');
+      tiempoMinutos,
+      preguntas: seleccionadas,
+      profesor_id: 1, // ⚠️ Reemplaza esto luego por el ID del profesor autenticado
+    });
+
+    alert('Ensayo guardado en base de datos.');
     volver();
-  };
+  } catch (error) {
+    console.error(error);
+    alert('Error al guardar el ensayo');
+  }
+};
+
 
   return (
     <div className="container max-w-md mx-auto p-4 bg-white rounded shadow">
@@ -229,7 +257,7 @@ const CrearEnsayo = ({ preguntas, volver }) => {
         <option value="">-- Seleccionar pregunta --</option>
         {preguntasFiltradas.filter((p) => !seleccionadas.includes(p.id)).map((p) => (
           <option key={p.id} value={p.id}>
-            {p.pregunta} (Dificultad: {p.dificultad})
+            {p.texto} (Dificultad: {p.dificultad})
           </option>
         ))}
       </select>
