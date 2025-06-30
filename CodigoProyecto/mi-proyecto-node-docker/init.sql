@@ -11,8 +11,7 @@ CREATE TABLE IF NOT EXISTS profesores (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(100) NOT NULL,
-    asignatura VARCHAR(100)
+    password VARCHAR(100) NOT NULL
 );
 
 -- 3.tabla cursos 
@@ -84,4 +83,22 @@ CREATE TABLE IF NOT EXISTS resultados (
     fecha_resolucion DATE DEFAULT CURRENT_DATE,
     FOREIGN KEY (ensayo_id) REFERENCES ensayos(id) ON DELETE CASCADE
 );
+
+INSERT INTO profesores (id, nombre, email, password)
+VALUES (1, 'Profesor', 'profesor@profesor.com', 'profesor');
+
+ALTER TABLE resultados
+ADD COLUMN alumno_id INT REFERENCES alumnos(id) ON DELETE CASCADE;
+
+ALTER TABLE resultados
+RENAME COLUMN puntaje_obtenido TO puntaje;
+
+ALTER TABLE resultados
+RENAME COLUMN fecha_resolucion TO fecha;
+
+INSERT INTO alumnos (nombre, email, password, curso_id, colegio_id)
+VALUES ('Camilo Estudiante', 'camilo@ejemplo.com', '1234', NULL, NULL);
+
+ALTER TABLE ensayos DROP COLUMN alumno_id;
+
 
