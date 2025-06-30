@@ -1,12 +1,35 @@
-// App.jsx
 import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Profesor from './Profesor';
 import Alumno from './Alumno';
 import Resultados from './Resultados';
 import './index.css';
 
-// Página de inicio: elige entre Profesor o Alumno
+// Wrapper para Alumno que extrae el ID desde location.state
+const AlumnoWrapper = () => {
+  const location = useLocation();
+  const alumno = location.state?.user;
+
+  if (!alumno) {
+    return <p>Error: No se encontró información del alumno.</p>;
+  }
+
+  return <Alumno alumnoId={alumno.id} />;
+};
+
+// Wrapper para Profesor que extrae el usuario desde location.state
+const ProfesorWrapper = () => {
+  const location = useLocation();
+  const profesor = location.state?.user;
+
+  if (!profesor) {
+    return <p>Error: No se encontró información del profesor.</p>;
+  }
+
+  return <Profesor username={profesor.nombre} />;
+};
+
+// Página de inicio
 const Home = ({ setModo }) => (
   <div className="text-center mt-10">
     <div className="card space-y-4">
@@ -17,18 +40,60 @@ const Home = ({ setModo }) => (
   </div>
 );
 
-// Página de login: 
+// Página de login
 const Login = ({ modo, setModo, setLogueado, setUsername, setPassword }) => {
   const [userInput, setUserInput] = useState('');
   const [passInput, setPassInput] = useState('');
   const navigate = useNavigate();
 
-  const manejarLogin = () => {
-    setUsername(userInput);
-    setPassword(passInput);
-    setLogueado(true);
-    if (modo === 'prof') navigate('/profesor');
-    else navigate('/alumno');
+  const manejarLogin = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/login', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ 
+          email: userInput.trim(), 
+          password: passInput.trim() 
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Credenciales incorrectas');
+      }
+
+      if (!data.role || !data.user) {
+        throw new Error('Respuesta del servidor inválida');
+      }
+
+      setUsername(userInput);
+      setPassword(passInput);
+      setLogueado(true);
+
+      if (data.role === 'profesor') {
+        navigate('/profesor', {
+          state: {
+            user: data.user,
+            authToken: 'simulated-token'
+          }
+        });
+      } else if (data.role === 'alumno') {
+        navigate('/alumno', {
+          state: {
+            user: data.user,
+            authToken: 'simulated-token'
+          }
+        });
+      }
+
+    } catch (err) {
+      console.error('Error de login:', err);
+      alert(err.message || 'Error al iniciar sesión');
+    }
   };
 
   return (
@@ -40,7 +105,7 @@ const Login = ({ modo, setModo, setLogueado, setUsername, setPassword }) => {
         <input
           className="input"
           type="text"
-          placeholder="Usuario"
+          placeholder="Correo electrónico"
           value={userInput}
           onChange={(e) => setUserInput(e.target.value)}
         />
@@ -61,11 +126,12 @@ const Login = ({ modo, setModo, setLogueado, setUsername, setPassword }) => {
   );
 };
 
-
+// Ruta protegida
 const RutaPrivada = ({ logueado, children }) => {
   return logueado ? children : <Navigate to="/" />;
 };
 
+// App principal
 const App = () => {
   const [modo, setModo] = useState(null);
   const [logueado, setLogueado] = useState(false);
@@ -96,7 +162,7 @@ const App = () => {
           path="/profesor"
           element={
             <RutaPrivada logueado={logueado}>
-              <Profesor username={username} />
+              <ProfesorWrapper />
             </RutaPrivada>
           }
         />
@@ -105,7 +171,7 @@ const App = () => {
           path="/alumno"
           element={
             <RutaPrivada logueado={logueado}>
-              <Alumno username={username} />
+              <Alumno alumnoId={1} />
             </RutaPrivada>
           }
         />

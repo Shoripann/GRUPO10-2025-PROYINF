@@ -25,7 +25,8 @@ const Alumno = ({ alumnoId }) => {
         setEnsayosDisponibles(resDisponibles.data);
 
         // Obtener ensayos realizados por el alumno
-        const resRealizados = await axios.get(`http://localhost:3000/api/ensayos/alumno/${alumnoId}`);
+        console.log(alumnoId)
+        const resRealizados = await axios.get(`http://localhost:3000/api/resultados/alumno/${alumnoId}`);
         setEnsayosRealizados(resRealizados.data);
 
         // Obtener resultados del alumno
@@ -69,10 +70,6 @@ const Alumno = ({ alumnoId }) => {
       // Obtener preguntas del ensayo con sus opciones
       const res = await axios.get(`http://localhost:3000/api/ensayos/${ensayo.id}/preguntas`);
       
-      // Asignar el ensayo al alumno antes de comenzar
-      await axios.patch(`http://localhost:3000/api/ensayos/${ensayo.id}/asignar`, {
-        alumno_id: alumnoId
-      });
 
       setEnsayoActivo({
         ...ensayo,

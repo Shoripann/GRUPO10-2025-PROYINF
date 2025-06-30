@@ -32,10 +32,13 @@ const Login = () => {
         throw new Error(data.error || 'Credenciales incorrectas');
       }
 
-      // Verificación adicional de los datos recibidos
       if (!data.role || !data.user) {
         throw new Error('Respuesta del servidor inválida');
       }
+
+      // Guardar en localStorage para persistencia
+      localStorage.setItem('usuario', JSON.stringify(data.user));
+      localStorage.setItem('rol', data.role);
 
       // Redirección basada en el rol
       if (data.role === 'profesor') {
