@@ -102,4 +102,24 @@ router.get('/', async (req, res) => {
   }
 });
 
+
+router.get('/alumno/:alumnoId', async (req, res) => {
+  const alumnoId = req.params.alumnoId;
+
+  try {
+    // Ejemplo: obtener ensayos asignados a ese alumno
+    const result = await pool.query(`
+      SELECT * FROM ensayos
+      WHERE alumno_id = $1
+      ORDER BY fecha DESC
+    `, [alumnoId]);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error al obtener ensayos por alumno:', err);
+    res.status(500).json({ error: 'Error al obtener ensayos por alumno' });
+  }
+});
+
+
 module.exports = router;

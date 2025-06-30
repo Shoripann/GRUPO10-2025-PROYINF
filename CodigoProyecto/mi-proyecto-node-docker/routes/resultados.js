@@ -54,6 +54,7 @@ router.get('/alumno/:alumnoId', async (req, res) => {
        ORDER BY r.fecha DESC`,
       [alumnoId]
     );
+
     res.json(result.rows);
   } catch (error) {
     console.error('Error obteniendo resultados:', error);
