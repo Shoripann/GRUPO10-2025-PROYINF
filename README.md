@@ -21,7 +21,7 @@ Puedes ver el video de la presentacion del prototipo mediante este [enlace](http
 
 ### Video del resultado final
 
-Puedes ver el video del resultado final mediante este [enlace]().
+Puedes ver el video del resultado final mediante este [enlace](https://youtu.be/Co9uSnZdtd0).
 
 ## Wiki
 
