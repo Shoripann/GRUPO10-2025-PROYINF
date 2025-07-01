@@ -25,7 +25,7 @@ const Alumno = ({ alumnoId }) => {
         setEnsayosDisponibles(resDisponibles.data);
 
         // Obtener ensayos realizados por el alumno
-        console.log(alumnoId)
+        console.log(alumnoId);
         const resRealizados = await axios.get(`http://localhost:3000/api/resultados/alumno/${alumnoId}`);
         setEnsayosRealizados(resRealizados.data);
 
@@ -42,7 +42,7 @@ const Alumno = ({ alumnoId }) => {
 
   // Temporizador
   const iniciarTemporizador = (minutos) => {
-    const segundos = minutos * 60;;
+    const segundos = minutos * 60;
     setTiempoRestante(segundos);
 
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -69,7 +69,6 @@ const Alumno = ({ alumnoId }) => {
     try {
       // Obtener preguntas del ensayo con sus opciones
       const res = await axios.get(`http://localhost:3000/api/ensayos/${ensayo.id}/preguntas`);
-      
 
       setEnsayoActivo({
         ...ensayo,
@@ -84,10 +83,10 @@ const Alumno = ({ alumnoId }) => {
           }))
         }))
       });
-      
+
       setIndiceActual(0);
       setRespuestas({});
-      
+
       if (ensayo.tiempoMinutos) {
         iniciarTemporizador(ensayo.tiempoMinutos);
       }
@@ -112,7 +111,7 @@ const Alumno = ({ alumnoId }) => {
       let correctas = 0;
       ensayoActivo.preguntas.forEach(pregunta => {
         const respuestaSeleccionada = respuestas[pregunta.id];
-        if (respuestaSeleccionada !== undefined && 
+        if (respuestaSeleccionada !== undefined &&
             pregunta.opciones[respuestaSeleccionada].esCorrecta) {
           correctas++;
         }
@@ -184,19 +183,19 @@ const Alumno = ({ alumnoId }) => {
               Tiempo restante: {formatTiempo(tiempoRestante)}
             </div>
           )}
-          
+
           <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
             {ensayoActivo.titulo}
           </h2>
-          
+
           <p style={{ marginBottom: '0.5rem', fontWeight: '600' }}>
             Pregunta {indiceActual + 1} de {ensayoActivo.preguntas.length}
           </p>
-          
+
           <p style={{ marginBottom: '1.5rem', fontSize: '1.1rem' }}>
             {preguntaActual.texto}
           </p>
-          
+
           <div style={{ marginBottom: '1.5rem' }}>
             {preguntaActual.opciones.map((opcion, index) => (
               <button
@@ -220,7 +219,7 @@ const Alumno = ({ alumnoId }) => {
               </button>
             ))}
           </div>
-          
+
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
             <button
               onClick={() => setIndiceActual(prev => Math.max(0, prev - 1))}
@@ -237,7 +236,7 @@ const Alumno = ({ alumnoId }) => {
             >
               Anterior
             </button>
-            
+
             {indiceActual < ensayoActivo.preguntas.length - 1 ? (
               <button
                 onClick={() => setIndiceActual(prev => prev + 1)}
@@ -269,7 +268,7 @@ const Alumno = ({ alumnoId }) => {
             )}
           </div>
         </div>
-        
+
         {/* Panel de navegación */}
         <div style={{
           flex: 1,
@@ -282,9 +281,9 @@ const Alumno = ({ alumnoId }) => {
           <h3 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '1rem', textAlign: 'center' }}>
             Navegación
           </h3>
-          
-          <div style={{ 
-            display: 'grid', 
+
+          <div style={{
+            display: 'grid',
             gridTemplateColumns: 'repeat(4, 1fr)',
             gap: '10px'
           }}>
@@ -299,13 +298,13 @@ const Alumno = ({ alumnoId }) => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: index === indiceActual 
-                    ? '#1d4ed8' 
-                    : respuestas[pregunta.id] !== undefined 
-                      ? '#10b981' 
+                  backgroundColor: index === indiceActual
+                    ? '#1d4ed8'
+                    : respuestas[pregunta.id] !== undefined
+                      ? '#10b981'
                       : '#e5e7eb',
-                  color: index === indiceActual || respuestas[pregunta.id] !== undefined 
-                    ? 'white' 
+                  color: index === indiceActual || respuestas[pregunta.id] !== undefined
+                    ? 'white'
                     : '#4b5563',
                   border: 'none',
                   cursor: 'pointer',
@@ -324,11 +323,11 @@ const Alumno = ({ alumnoId }) => {
 
   // Vista principal (sin ensayo activo)
   return (
-    <div style={{ 
-      display: 'flex', 
-      padding: '20px', 
-      gap: '20px', 
-      maxWidth: '1200px', 
+    <div style={{
+      display: 'flex',
+      padding: '20px',
+      gap: '20px',
+      maxWidth: '1200px',
       margin: '0 auto',
       minHeight: '80vh'
     }}>
@@ -340,21 +339,21 @@ const Alumno = ({ alumnoId }) => {
         padding: '16px',
         backgroundColor: '#f9fafb'
       }}>
-        <h2 style={{ 
-          fontSize: '1.5rem', 
-          fontWeight: 'bold', 
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: 'bold',
           marginBottom: '1rem',
           textAlign: 'center'
         }}>
           Ensayos Disponibles
         </h2>
-        
+
         {ensayosDisponibles.length === 0 ? (
           <p style={{ textAlign: 'center', color: '#6b7280' }}>No hay ensayos disponibles actualmente.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {ensayosDisponibles.map(ensayo => (
-              <div 
+              <div
                 key={ensayo.id}
                 style={{
                   border: '1px solid #e5e7eb',
@@ -386,7 +385,7 @@ const Alumno = ({ alumnoId }) => {
           </div>
         )}
       </div>
-      
+
       {/* Ensayos realizados */}
       <div style={{
         flex: 1,
@@ -395,48 +394,51 @@ const Alumno = ({ alumnoId }) => {
         padding: '16px',
         backgroundColor: '#f3f4f6'
       }}>
-        <h2 style={{ 
-          fontSize: '1.5rem', 
-          fontWeight: 'bold', 
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: 'bold',
           marginBottom: '1rem',
           textAlign: 'center'
         }}>
           Ensayos Realizados
         </h2>
-        
+
         {ensayosRealizados.length === 0 ? (
           <p style={{ textAlign: 'center', color: '#6b7280' }}>No has realizado ningún ensayo aún.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {ensayosRealizados.map(ensayo => {
-              return(
-              <div 
-                key={ensayo.id}
-                style={{
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  padding: '12px',
-                  backgroundColor: 'white',
-                  cursor: 'pointer'
-                }}
-                onClick={() => setEnsayoSeleccionado({ ensayo })}
-              >
-                <h3 style={{ fontWeight: '600', marginBottom: '4px' }}>{ensayo.titulo}</h3>
-                <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-                  {ensayo.asignatura || 'Sin asignatura especificada'}
-                </p>
-                <p style={{ 
-                  color: ensayo.puntaje >= 70 ? '#10b981' : '#ef4444',
-                  fontWeight: '500'
-                }}>
-                  Puntaje: {ensayo.puntaje?.toFixed(2) || 0}%
-                </p>
-              </div>
+              const puntajeNum = Number(ensayo.puntaje);
+              const puntajeFormateado = (!puntajeNum && puntajeNum !== 0) ? '0.00' : puntajeNum.toFixed(2);
+
+              return (
+                <div
+                  key={ensayo.id}
+                  style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '6px',
+                    padding: '12px',
+                    backgroundColor: 'white',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setEnsayoSeleccionado({ ensayo })}
+                >
+                  <h3 style={{ fontWeight: '600', marginBottom: '4px' }}>{ensayo.titulo}</h3>
+                  <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                    {ensayo.asignatura || 'Sin asignatura especificada'}
+                  </p>
+                  <p style={{
+                    color: puntajeNum >= 70 ? '#10b981' : '#ef4444',
+                    fontWeight: '500'
+                  }}>
+                    Puntaje: {puntajeFormateado}%
+                  </p>
+                </div>
               );
             })}
           </div>
         )}
-        
+
         {/* Detalle del ensayo seleccionado */}
         {ensayoSeleccionado && (
           <div style={{
@@ -460,34 +462,34 @@ const Alumno = ({ alumnoId }) => {
               maxHeight: '80vh',
               overflowY: 'auto'
             }}>
-              <h3 style={{ 
-                fontSize: '1.3rem', 
-                fontWeight: 'bold', 
+              <h3 style={{
+                fontSize: '1.3rem',
+                fontWeight: 'bold',
                 marginBottom: '1rem'
               }}>
                 {ensayoSeleccionado.ensayo.titulo}
               </h3>
-              
+
               <p style={{ marginBottom: '0.5rem' }}>
                 <strong>Asignatura:</strong> {ensayoSeleccionado.ensayo.asignatura || 'No especificada'}
               </p>
-              
+
               <p style={{ marginBottom: '0.5rem' }}>
                 <strong>Fecha:</strong> {new Date(ensayoSeleccionado.ensayo.fecha).toLocaleDateString()}
               </p>
-              
+
               {ensayoSeleccionado.resultado && (
                 <>
                   <p style={{ marginBottom: '0.5rem' }}>
                     <strong>Puntaje:</strong> {ensayoSeleccionado.resultado.puntaje.toFixed(2)}%
                   </p>
-                  
+
                   <p style={{ marginBottom: '1.5rem' }}>
                     <strong>Fecha de realización:</strong> {new Date(ensayoSeleccionado.resultado.fecha).toLocaleDateString()}
                   </p>
                 </>
               )}
-              
+
               <button
                 onClick={() => setEnsayoSeleccionado(null)}
                 style={{

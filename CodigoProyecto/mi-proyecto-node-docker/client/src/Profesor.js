@@ -212,7 +212,7 @@ const CrearEnsayo = ({ preguntas, volver }) => {
       asignatura,
       tiempoMinutos,
       preguntas: seleccionadas,
-      profesor_id: 1, // ⚠️ Reemplaza esto luego por el ID del profesor autenticado
+      profesor_id: 1, 
     });
 
     alert('Ensayo guardado en base de datos.');
