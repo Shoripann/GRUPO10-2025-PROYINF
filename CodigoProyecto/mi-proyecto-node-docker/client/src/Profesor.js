@@ -189,7 +189,7 @@ const CrearEnsayo = ({ preguntas, volver }) => {
   const [maxPreguntas, setMaxPreguntas] = useState(5);
   const [tiempoMinutos, setTiempoMinutos] = useState(30);
 
-  const preguntasFiltradas = preguntas.filter((p) => p.materia === asignatura);
+  const preguntasFiltradas = preguntas.filter((p) => (p.materia || p.asignatura) === asignatura);
 
   const agregarPregunta = (id) => {
     if (seleccionadas.includes(id) || seleccionadas.length >= maxPreguntas) return;
@@ -272,7 +272,7 @@ const CrearEnsayo = ({ preguntas, volver }) => {
           <ul className="list-disc ml-6">
             {preguntas.filter((p) => seleccionadas.includes(p.id)).map((p) => (
               <li key={p.id}>
-                {p.pregunta}
+                {p.pregunta || p.texto}
                 <button onClick={() => eliminarPregunta(p.id)} className="text-red-500 text-sm ml-2 underline">
                   Quitar
                 </button>

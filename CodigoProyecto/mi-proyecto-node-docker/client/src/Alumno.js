@@ -42,7 +42,7 @@ const Alumno = ({ alumnoId }) => {
 
   // Temporizador
   const iniciarTemporizador = (minutos) => {
-    let segundos = minutos * 60;
+    const segundos = minutos * 60;;
     setTiempoRestante(segundos);
 
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -79,7 +79,7 @@ const Alumno = ({ alumnoId }) => {
           opciones: p.opciones.map((o, index) => ({
             id: o.id,
             texto: o.texto,
-            esCorrecta: o.es_correcta,
+            esCorrecta: o.es_correcta === true || o.esCorrecta === true,
             index
           }))
         }))
@@ -409,32 +409,29 @@ const Alumno = ({ alumnoId }) => {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {ensayosRealizados.map(ensayo => {
-              const resultado = resultados.find(r => r.ensayo_id === ensayo.id);
-              return (
-                <div 
-                  key={ensayo.id}
-                  style={{
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '6px',
-                    padding: '12px',
-                    backgroundColor: 'white',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => setEnsayoSeleccionado({ ensayo, resultado })}
-                >
-                  <h3 style={{ fontWeight: '600', marginBottom: '4px' }}>{ensayo.titulo}</h3>
-                  <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-                    {ensayo.asignatura || 'Sin asignatura especificada'}
-                  </p>
-                  {resultado && (
-                    <p style={{ 
-                      color: resultado.puntaje >= 70 ? '#10b981' : '#ef4444',
-                      fontWeight: '500'
-                    }}>
-                      Puntaje: {resultado.puntaje.toFixed(2)}%
-                    </p>
-                  )}
-                </div>
+              return(
+              <div 
+                key={ensayo.id}
+                style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  padding: '12px',
+                  backgroundColor: 'white',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setEnsayoSeleccionado({ ensayo })}
+              >
+                <h3 style={{ fontWeight: '600', marginBottom: '4px' }}>{ensayo.titulo}</h3>
+                <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                  {ensayo.asignatura || 'Sin asignatura especificada'}
+                </p>
+                <p style={{ 
+                  color: ensayo.puntaje >= 70 ? '#10b981' : '#ef4444',
+                  fontWeight: '500'
+                }}>
+                  Puntaje: {ensayo.puntaje?.toFixed(2) || 0}%
+                </p>
+              </div>
               );
             })}
           </div>

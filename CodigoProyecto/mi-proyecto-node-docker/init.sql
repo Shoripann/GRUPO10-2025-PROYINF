@@ -100,5 +100,3 @@ INSERT INTO alumnos (nombre, email, password, curso_id, colegio_id)
 VALUES ('Camilo Estudiante', 'camilo@ejemplo.com', '1234', NULL, NULL);
 
 ALTER TABLE ensayos DROP COLUMN alumno_id;
-
-

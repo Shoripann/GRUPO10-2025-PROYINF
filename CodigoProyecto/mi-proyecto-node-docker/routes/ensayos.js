@@ -18,11 +18,11 @@ router.post('/', async (req, res) => {
 
     // Insertar ensayo (sin alumno_id, ya que es creado por el profesor)
     const insertQuery = `
-      INSERT INTO ensayos (titulo, fecha, asignatura, num_preguntas, alumno_id)
-      VALUES ($1, CURRENT_DATE, $2, $3, NULL)
+      INSERT INTO ensayos (titulo, fecha, asignatura, num_preguntas, tiempo_minutos)
+      VALUES ($1, CURRENT_DATE, $2, $3, $4)
       RETURNING id
     `;
-    const ensayoRes = await client.query(insertQuery, [titulo, asignatura, preguntas.length]);
+    const ensayoRes = await client.query(insertQuery, [titulo, asignatura, preguntas.length, tiempoMinutos]);
     const ensayoId = ensayoRes.rows[0].id;
 
     // Insertar relaciones ensayo-pregunta
@@ -47,8 +47,9 @@ router.post('/', async (req, res) => {
 router.get('/disponibles', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT * FROM ensayos
-      WHERE alumno_id IS NULL
+      SELECT id, titulo, asignatura, num_preguntas, tiempo_minutos AS "tiempoMinutos"
+      FROM ensayos
+      ORDER BY fecha DESC
     `);
     res.json(result.rows);
   } catch (err) {
@@ -109,9 +110,11 @@ router.get('/alumno/:alumnoId', async (req, res) => {
   try {
     // Ejemplo: obtener ensayos asignados a ese alumno
     const result = await pool.query(`
-      SELECT * FROM ensayos
-      WHERE alumno_id = $1
-      ORDER BY fecha DESC
+      SELECT e.*
+      FROM ensayos e
+      JOIN resultados r ON e.id = r.ensayo_id
+      WHERE r.alumno_id = $1
+      ORDER BY r.fecha DESC
     `, [alumnoId]);
 
     res.json(result.rows);

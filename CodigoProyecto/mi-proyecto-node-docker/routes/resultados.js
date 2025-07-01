@@ -5,14 +5,22 @@ const db = require('../db');
 // Guardar resultado de un ensayo con respuestas
 router.post('/', async (req, res) => {
   const { ensayo_id, alumno_id, respuestas } = req.body;
+  const respuestasObj = typeof respuestas === 'string' ? JSON.parse(respuestas) : respuestas;
 
   const client = await db.connect();
   try {
     await client.query('BEGIN');
 
-    // Calcular puntaje
+    // Obtener total de preguntas del ensayo
+    const totalPreguntasRes = await client.query(
+      'SELECT COUNT(*) FROM ensayo_pregunta WHERE ensayo_id = $1',
+      [ensayo_id]
+    );
+    const totalPreguntas = parseInt(totalPreguntasRes.rows[0].count);
+
+    // Calcular cantidad de respuestas correctas
     let correctas = 0;
-    for (const [preguntaId, opcionIndex] of Object.entries(respuestas)) {
+    for (const [preguntaId, opcionIndex] of Object.entries(respuestasObj)) {
       const opcionesRes = await client.query(
         'SELECT id, es_correcta FROM opciones WHERE pregunta_id = $1 ORDER BY id',
         [preguntaId]
@@ -21,7 +29,8 @@ router.post('/', async (req, res) => {
       if (opcionSeleccionada?.es_correcta) correctas++;
     }
 
-    const puntaje = Math.round((correctas / Object.keys(respuestas).length) * 100);
+    // Calcular puntaje en base al total del ensayo, no solo las respondidas
+    const puntaje = Math.round((correctas / totalPreguntas) * 100);
 
     // Insertar resultado
     await client.query(
@@ -55,7 +64,12 @@ router.get('/alumno/:alumnoId', async (req, res) => {
       [alumnoId]
     );
 
-    res.json(result.rows);
+    const resultados = result.rows.map(r => ({
+      ...r,
+      puntaje: Number(r.puntaje)
+    }));
+
+    res.json(resultados);
   } catch (error) {
     console.error('Error obteniendo resultados:', error);
     res.status(500).json({ error: 'Error obteniendo resultados' });
