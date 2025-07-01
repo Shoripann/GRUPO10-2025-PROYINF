@@ -19,6 +19,10 @@ Para correr el proyecto se utilizo los implmentos otorgados por los ayudantes,pr
 
 Puedes ver el video de la presentacion del prototipo mediante este [enlace](https://www.youtube.com/watch?v=B3q-XpeDJEo).
 
+### Video del resultado final
+
+Puedes ver el video del resultado final mediante este [enlace]().
+
 ## Wiki
 
 Puede acceder a la Wiki mediante este [enlace](https://github.com/Shoripann/GRUPO10-2025-PROYINF/wiki#grupo-10).
