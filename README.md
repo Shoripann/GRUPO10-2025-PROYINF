@@ -13,7 +13,7 @@ Puedes ver el video de la presentacion del cliente mediante este [enlace](https:
 
 ### Levantamiento del Proyecto
 
-Para correr el proyecto se utilizo los implmentos otorgados por los ayudantes,primero se tiene que descargar los archivos de la carpeta "CodigoProyecto", al tener la carpeta descargada,mover la carpeta "client" al interior de  la carpeta "mi-proyecto-node-docker" debes acceder mediante consola a "mi-proyecto-node-docker" escribir en la consola "docker compose up", a continuacion mediante la consola ingresar a la carpeta "client" y escribir en consola "npm install" cuando finalice el proceso escribir "npm install react-router-dom --save"  por ultimo escribir "npm start".
+Para correr el proyecto se utilizo los implmentos otorgados por los ayudantes,primero se tiene que descargar los archivos de la carpeta "CodigoProyecto",a continuacion debes acceder mediante consola a "mi-proyecto-node-docker" escribir en la consola "docker compose up --build", para finalizar ingresar en tu navegador de preferencia a localhost:3001
 
 ### Video del Prototipo
 
