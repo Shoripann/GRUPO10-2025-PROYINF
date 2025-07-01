@@ -16,6 +16,7 @@ Puedes ver el video de la presentacion del cliente mediante este [enlace](https:
 Para correr el proyecto se utilizo los implmentos otorgados por los ayudantes,primero se tiene que descargar los archivos de la carpeta "CodigoProyecto",a continuacion debes acceder mediante consola a "mi-proyecto-node-docker" escribir en la consola "docker compose up --build", para finalizar ingresar en tu navegador de preferencia a localhost:3001
 
 credencial profesor:profesor@profesor.com    clave:profesor
+
 credencial alumno:camilo@ejemplo.com clave:1234
   
 
