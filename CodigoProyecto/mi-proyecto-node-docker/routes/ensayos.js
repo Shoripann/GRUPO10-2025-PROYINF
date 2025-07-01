@@ -6,7 +6,6 @@ const pool = require('../db');
 router.post('/', async (req, res) => {
   const { titulo, asignatura, tiempoMinutos, preguntas, profesor_id } = req.body;
 
-  // Validación básica
   if (!titulo || !asignatura || !tiempoMinutos || !Array.isArray(preguntas) || preguntas.length === 0) {
     return res.status(400).json({ error: 'Faltan campos requeridos o preguntas inválidas' });
   }
@@ -16,34 +15,50 @@ router.post('/', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // Insertar ensayo (sin alumno_id, ya que es creado por el profesor)
     const insertQuery = `
-      INSERT INTO ensayos (titulo, fecha, asignatura, num_preguntas, tiempo_minutos)
-      VALUES ($1, CURRENT_DATE, $2, $3, $4)
+      INSERT INTO ensayos (titulo, fecha, asignatura, num_preguntas, tiempo_minutos, puntaje,alumno_id)
+      VALUES ($1, CURRENT_DATE, $2, $3, $4, $5,$6)
       RETURNING id
     `;
-    const ensayoRes = await client.query(insertQuery, [titulo, asignatura, preguntas.length, tiempoMinutos]);
+    const ensayoRes = await client.query(insertQuery, [
+      titulo,
+      asignatura,
+      preguntas.length,
+      tiempoMinutos,
+      0, // puntaje por defecto
+      1
+    ]);
     const ensayoId = ensayoRes.rows[0].id;
 
-    // Insertar relaciones ensayo-pregunta
-    const relacionQuery = `
-      INSERT INTO ensayo_pregunta (ensayo_id, pregunta_id) VALUES ($1, $2)
-    `;
+    const relacionQuery = `INSERT INTO ensayo_pregunta (ensayo_id, pregunta_id) VALUES ($1, $2)`;
     for (const preguntaId of preguntas) {
       await client.query(relacionQuery, [ensayoId, preguntaId]);
     }
 
     await client.query('COMMIT');
     res.status(201).json({ mensaje: '✅ Ensayo guardado correctamente', id: ensayoId });
+
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error('❌ Error al guardar el ensayo:', err);
-    res.status(500).json({ error: 'Error al guardar el ensayo' });
+    console.error('❌ Error al guardar el ensayo:', err.message);
+    res.status(500).json({ error: 'Error al guardar el ensayo', detalle: err.message });
   } finally {
     client.release();
   }
 });
 
+// Obtener todos los ensayos
+router.get('/', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM ensayos ORDER BY fecha DESC');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error al obtener ensayos:', err.message);
+    res.status(500).json({ error: 'Error al obtener ensayos' });
+  }
+});
+
+// Obtener ensayos disponibles (sin resolver)
 router.get('/disponibles', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -53,11 +68,12 @@ router.get('/disponibles', async (req, res) => {
     `);
     res.json(result.rows);
   } catch (err) {
-    console.error('Error al obtener ensayos disponibles:', err);
-    res.status(500).json({ error: 'Error al obtener ensayos' });
+    console.error('Error al obtener ensayos disponibles:', err.message);
+    res.status(500).json({ error: 'Error al obtener ensayos disponibles' });
   }
 });
 
+// Obtener preguntas de un ensayo
 router.get('/:id/preguntas', async (req, res) => {
   const ensayoId = req.params.id;
 
@@ -71,7 +87,6 @@ router.get('/:id/preguntas', async (req, res) => {
 
     const preguntas = preguntasRes.rows;
 
-    // Obtener opciones para cada pregunta
     const preguntasConOpciones = await Promise.all(
       preguntas.map(async (pregunta) => {
         const opcionesRes = await pool.query(
@@ -87,28 +102,16 @@ router.get('/:id/preguntas', async (req, res) => {
 
     res.json(preguntasConOpciones);
   } catch (err) {
-    console.error('Error al obtener preguntas del ensayo:', err);
+    console.error('Error al obtener preguntas del ensayo:', err.message);
     res.status(500).json({ error: 'Error al obtener preguntas del ensayo' });
   }
 });
 
-// Obtener ensayos
-router.get('/', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM ensayos');
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error al obtener ensayos:', err); 
-    res.status(500).json({ error: 'Error al obtener ensayos' });
-  }
-});
-
-
+// Obtener ensayos realizados por alumno
 router.get('/alumno/:alumnoId', async (req, res) => {
   const alumnoId = req.params.alumnoId;
 
   try {
-    // Ejemplo: obtener ensayos asignados a ese alumno
     const result = await pool.query(`
       SELECT e.*
       FROM ensayos e
@@ -119,10 +122,9 @@ router.get('/alumno/:alumnoId', async (req, res) => {
 
     res.json(result.rows);
   } catch (err) {
-    console.error('Error al obtener ensayos por alumno:', err);
+    console.error('Error al obtener ensayos por alumno:', err.message);
     res.status(500).json({ error: 'Error al obtener ensayos por alumno' });
   }
 });
-
 
 module.exports = router;
