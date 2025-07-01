@@ -67,13 +67,18 @@ CREATE TABLE IF NOT EXISTS opciones (
 );
 
 -- 8.  tabla ensayo_pregunta 
-CREATE TABLE IF NOT EXISTS ensayo_pregunta (
-    ensayo_id INT NOT NULL,
-    pregunta_id INT NOT NULL,
-    PRIMARY KEY (ensayo_id, pregunta_id),
-    FOREIGN KEY (ensayo_id) REFERENCES ensayos(id) ON DELETE CASCADE,
-    FOREIGN KEY (pregunta_id) REFERENCES preguntas(id) ON DELETE CASCADE
+CREATE TABLE IF NOT EXISTS ensayos (
+    id SERIAL PRIMARY KEY,
+    titulo VARCHAR(200) NOT NULL,
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    asignatura VARCHAR(100),
+    num_preguntas INT,
+    puntaje DECIMAL(5,2) DEFAULT 0 CHECK (puntaje >= 0 AND puntaje <= 100),
+    tiempo_minutos INT,
+    alumno_id INT NOT NULL,
+    FOREIGN KEY (alumno_id) REFERENCES alumnos(id) ON DELETE CASCADE
 );
+
 
 -- 9. tabla resultados 
 CREATE TABLE IF NOT EXISTS resultados (
@@ -99,6 +104,5 @@ RENAME COLUMN fecha_resolucion TO fecha;
 INSERT INTO alumnos (nombre, email, password, curso_id, colegio_id)
 VALUES ('Camilo Estudiante', 'camilo@ejemplo.com', '1234', NULL, NULL);
 
-ALTER TABLE ensayos DROP COLUMN alumno_id;
 
-ALTER TABLE ensayos ADD COLUMN tiempo_minutos INT;
+
