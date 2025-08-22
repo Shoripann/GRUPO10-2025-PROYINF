@@ -6,7 +6,7 @@
 
 
 ## Sobre el Proyecto
-El cliente solicitó la creación de un software con el objetivo de proporcionar una herramienta robusta y accesible que permita a los estudiantes prepararse de manera efectiva para las pruebas, y que facilite a los docentes el seguimiento del progreso de sus alumnos.
+El cliente solicitó la creación de un software robusto y accesible, que permita a los estudiantes prepararse de manera efectiva para las pruebas PAES, y que facilite a los docentes el seguimiento del progreso de sus alumnos.
 
 
 ### Estado
