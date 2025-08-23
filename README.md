@@ -11,4 +11,4 @@ Este proyecto continúa el desarrollo de la Plataforma de ensayos PAES, comenzad
 ## Sobre el Proyecto
 El cliente solicitó la creación de un software robusto y accesible, que permita a los estudiantes prepararse de manera efectiva para las pruebas PAES, y que facilite a los docentes el seguimiento del progreso de sus alumnos.
 
-[Ver Informe](Informe Ingeniería.pdf)
+[Ver Informe](https://github.com/Shoripann/GRUPO10-2025-PROYINF/blob/main/Informe%20Ingenier%C3%ADa.pdf)
