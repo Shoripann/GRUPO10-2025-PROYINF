@@ -10,3 +10,6 @@ Este proyecto continúa el desarrollo de la Plataforma de ensayos PAES, comenzad
 
 ## Sobre el Proyecto
 El cliente solicitó la creación de un software robusto y accesible, que permita a los estudiantes prepararse de manera efectiva para las pruebas PAES, y que facilite a los docentes el seguimiento del progreso de sus alumnos.
+
+## Informe
+[Ver Informe](./Informe%20Ingenieria.pdf)
