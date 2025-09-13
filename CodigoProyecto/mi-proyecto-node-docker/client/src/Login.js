@@ -14,7 +14,7 @@ const Login = () => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3000/api/login', {
+      const response = await fetch('/api/login', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -26,13 +26,17 @@ const Login = () => {
         }),
       });
 
-      const data = await response.json();
+      const raw = await response.text();
+      let data = null;
+      let text = raw;
+      try {data = JSON.parse(raw);} catch {}
 
       if (!response.ok) {
-        throw new Error(data.error || 'Credenciales incorrectas');
+        const msg = (data && data.error) || text || 'HTTP ${response.status}';
+        throw new Error(msg);
       }
 
-      if (!data.role || !data.user) {
+      if (!data || !data.role || !data.user) {
         throw new Error('Respuesta del servidor inválida');
       }
 

@@ -2,8 +2,9 @@ import React, { useState, useMemo } from 'react';
 import './Resultados.css';  // Importa el CSS aquí
 
 const Resultados = () => {
-  const resultados = JSON.parse(localStorage.getItem('resultados')) || [];
-
+  const resultados = useMemo(() => {
+    return JSON.parse(localStorage.getItem('resultados')) || []
+  }, []);
   const resultadosPorEnsayo = useMemo(() => {
     const agrupados = resultados.reduce((acc, resultado) => {
       const key = resultado.titulo;

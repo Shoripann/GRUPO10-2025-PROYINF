@@ -1,78 +1,51 @@
+// routes/resultados.js
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// Guardar resultado de un ensayo con respuestas
+// Guarda resultado
 router.post('/', async (req, res) => {
-  const { ensayo_id, alumno_id, respuestas } = req.body;
-  const respuestasObj = typeof respuestas === 'string' ? JSON.parse(respuestas) : respuestas;
-
-  const client = await db.connect();
   try {
-    await client.query('BEGIN');
+    const { ensayo_id, alumno_id, puntaje, respuestas } = req.body;
 
-    // Obtener total de preguntas del ensayo
-    const totalPreguntasRes = await client.query(
-      'SELECT COUNT(*) FROM ensayo_pregunta WHERE ensayo_id = $1',
-      [ensayo_id]
-    );
-    const totalPreguntas = parseInt(totalPreguntasRes.rows[0].count);
-
-    // Calcular cantidad de respuestas correctas
-    let correctas = 0;
-    for (const [preguntaId, opcionIndex] of Object.entries(respuestasObj)) {
-      const opcionesRes = await client.query(
-        'SELECT id, es_correcta FROM opciones WHERE pregunta_id = $1 ORDER BY id',
-        [preguntaId]
-      );
-      const opcionSeleccionada = opcionesRes.rows[opcionIndex];
-      if (opcionSeleccionada?.es_correcta) correctas++;
+    if (!ensayo_id || !alumno_id || !respuestas) {
+      return res.status(400).json({
+        error: 'Faltan campos: ensayo_id, alumno_id y respuestas son obligatorios.'
+      });
     }
 
-    // Calcular puntaje en base al total del ensayo, no solo las respondidas
-    const puntaje = Math.round((correctas / totalPreguntas) * 100);
+    const respObj = typeof respuestas === 'string' ? JSON.parse(respuestas) : respuestas;
 
-    // Insertar resultado
-    await client.query(
-      `INSERT INTO resultados (ensayo_id, alumno_id, puntaje, fecha)
-       VALUES ($1, $2, $3, CURRENT_DATE)`,
-      [ensayo_id, alumno_id, puntaje]
+    let puntajeFinal = typeof puntaje === 'number' ? puntaje : null;
+
+    await db.query(
+      `INSERT INTO resultados (ensayo_id, alumno_id, puntaje, fecha, respuestas)
+       VALUES ($1, $2, $3, CURRENT_DATE, $4)`,
+      [Number(ensayo_id), Number(alumno_id), puntajeFinal, respObj]
     );
 
-    await client.query('COMMIT');
-    res.status(201).json({ mensaje: 'Resultado guardado', puntaje });
+    return res.status(201).json({ mensaje: 'Resultado guardado' });
   } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('Error al guardar resultado:', err);
-    res.status(500).json({ error: 'Error al guardar resultado' });
-  } finally {
-    client.release();
+    console.error('❌ Error guardando resultado:', err);
+    return res.status(500).json({ error: 'Error guardando resultado' });
   }
 });
 
-// Obtener resultados de un alumno con datos del ensayo
-router.get('/alumno/:alumnoId', async (req, res) => {
-  const { alumnoId } = req.params;
-
+// resultados por alumno
+router.get('/:alumnoId', async (req, res) => {
   try {
-    const result = await db.query(
-      `SELECT r.id, r.puntaje, r.fecha, e.titulo, e.id AS ensayo_id
-       FROM resultados r
-       JOIN ensayos e ON r.ensayo_id = e.id
-       WHERE r.alumno_id = $1
-       ORDER BY r.fecha DESC`,
-      [alumnoId]
+    const { alumnoId } = req.params;
+    const r = await db.query(
+      `SELECT r.id, r.ensayo_id, r.alumno_id, r.puntaje, r.fecha
+         FROM resultados r
+        WHERE r.alumno_id = $1
+        ORDER BY r.fecha DESC, r.id DESC`,
+      [Number(alumnoId)]
     );
-
-    const resultados = result.rows.map(r => ({
-      ...r,
-      puntaje: Number(r.puntaje)
-    }));
-
-    res.json(resultados);
-  } catch (error) {
-    console.error('Error obteniendo resultados:', error);
-    res.status(500).json({ error: 'Error obteniendo resultados' });
+    res.json(r.rows);
+  } catch (err) {
+    console.error('Error listando resultados:', err);
+    res.status(500).json({ error: 'Error listando resultados' });
   }
 });
 

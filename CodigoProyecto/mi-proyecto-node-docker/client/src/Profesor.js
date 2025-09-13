@@ -1,58 +1,72 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
- import axios from 'axios';
+import axios from 'axios';
 
 const Profesor = () => {
   const [preguntas, setPreguntas] = useState([]);
   const [vista, setVista] = useState(null);
   const navigate = useNavigate();
 
+  // Cargar preguntas
   useEffect(() => {
-    axios.get('http://localhost:3000/api/preguntas')
-      .then(res => setPreguntas(res.data))
+    axios.get('/api/preguntas')
+      .then(res => {
+        const normalizadas = res.data.map(p => {
+          const asig = (p.asignatura ?? p.materia ?? '').trim();
+          return {
+            ...p,
+            asignatura: asig,
+            materia: asig, 
+          };
+        });
+        setPreguntas(normalizadas);
+      })
       .catch(err => console.error('Error al cargar preguntas:', err));
   }, []);
 
+  // Guarda en BD y actualiza el estado local
   const agregarPregunta = async (nuevaPregunta) => {
-  try {
-    // Paso 1: Guardar la pregunta
-    const res = await axios.post('http://localhost:3000/api/preguntas', {
-      texto: nuevaPregunta.pregunta,
-      dificultad: nuevaPregunta.dificultad,
-      materia: nuevaPregunta.asignatura,
-      profesor_id: 1 // ← Puedes reemplazar esto con el ID real del profesor autenticado
-    });
-
-    const preguntaId = res.data.id;
-
-    // Paso 2: Guardar las alternativas
-    for (let i = 0; i < nuevaPregunta.alternativas.length; i++) {
-      await axios.post('http://localhost:3000/api/opciones', {
-        pregunta_id: preguntaId,
-        texto: nuevaPregunta.alternativas[i],
-        es_correcta: i === nuevaPregunta.correcta
+    try {
+      // 1) Guardar la pregunta
+      const res = await axios.post('/api/preguntas', {
+        texto: nuevaPregunta.pregunta,
+        dificultad: nuevaPregunta.dificultad,
+        materia: nuevaPregunta.asignatura, 
+        profesor_id: 1,
+        es_banco: Boolean(nuevaPregunta.es_banco)
       });
+      const preguntaId = res.data.id;
+
+      // 2) Guardar alternativas
+      for (let i = 0; i < nuevaPregunta.alternativas.length; i++) {
+        await axios.post('/api/opciones', {
+          pregunta_id: preguntaId,
+          texto: nuevaPregunta.alternativas[i],
+          es_correcta: i === nuevaPregunta.correcta
+        });
+      }
+
+      // 3) Actualizar estado local
+      const asig = (nuevaPregunta.asignatura || '').trim();
+      const nueva = {
+        id: preguntaId,
+        texto: nuevaPregunta.pregunta,
+        pregunta: nuevaPregunta.pregunta,
+        alternativas: nuevaPregunta.alternativas,
+        correcta: nuevaPregunta.correcta,
+        dificultad: nuevaPregunta.dificultad,
+        asignatura: asig,
+        materia: asig,
+        es_banco: Boolean(nuevaPregunta.es_banco)
+      };
+
+      setPreguntas(prev => [...prev, nueva]);
+      alert('✅ Pregunta guardada correctamente');
+    } catch (err) {
+      console.error('❌ Error al guardar la pregunta:', err);
+      alert('Error al guardar la pregunta');
     }
-
-    // Paso 3: Actualizar el estado con la nueva pregunta
-    const nueva = {
-      id: preguntaId,
-      pregunta: nuevaPregunta.pregunta,
-      alternativas: nuevaPregunta.alternativas,
-      correcta: nuevaPregunta.correcta,
-      asignatura: nuevaPregunta.asignatura,
-      dificultad: nuevaPregunta.dificultad
-    };
-
-    setPreguntas(prev => [...prev, nueva]);
-    alert('✅ Pregunta guardada correctamente');
-  } catch (err) {
-    console.error('❌ Error al guardar la pregunta:', err);
-    alert('Error al guardar la pregunta');
-  }
-};
-
+  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4">
@@ -87,46 +101,35 @@ const CrearPregunta = ({ volver, agregarPregunta }) => {
   const [correcta, setCorrecta] = useState(null);
   const [asignatura, setAsignatura] = useState('');
   const [dificultad, setDificultad] = useState('');
+  const [esBanco, setEsBanco] = useState(false);
 
-
-const guardar = async () => {
-  if (!pregunta || alternativas.some((a) => a === '') || correcta === null || !asignatura || !dificultad) {
-    alert('Completa todo');
-    return;
-  }
-
-  try {
-    // Paso 1: Guardar la pregunta
-    const res = await axios.post('http://localhost:3000/api/preguntas', {
-      texto: pregunta,
-      dificultad,
-      materia: asignatura,
-      profesor_id: 1 // ← Aquí puedes usar el ID del profesor autenticado
-    });
-
-    const preguntaId = res.data.id;
-
-    // Paso 2: Guardar las alternativas
-    for (let i = 0; i < alternativas.length; i++) {
-      await axios.post('http://localhost:3000/api/opciones', {
-        pregunta_id: preguntaId,
-        texto: alternativas[i],
-        es_correcta: i === correcta
-      });
+  const guardar = async () => {
+    if (!pregunta || alternativas.some((a) => a === '') || correcta === null || !asignatura || !dificultad) {
+      alert('Completa todo');
+      return;
     }
 
-    alert('Pregunta guardada correctamente');
-    setPregunta('');
-    setAlternativas(['', '', '', '']);
-    setCorrecta(null);
-    setAsignatura('');
-    setDificultad('');
-  } catch (err) {
-    console.error(err);
-    alert('Error al guardar la pregunta');
-  }
-};
+    try {
+      await agregarPregunta({
+        pregunta,
+        alternativas,
+        correcta,
+        asignatura,
+        dificultad,
+        es_banco: esBanco
+      });
 
+      // Limpiar formulario
+      setPregunta('');
+      setAlternativas(['', '', '', '']);
+      setCorrecta(null);
+      setAsignatura('');
+      setDificultad('');
+    } catch (err) {
+      console.error(err);
+      alert('Error al guardar la pregunta');
+    }
+  };
 
   return (
     <div className="container" style={{ maxWidth: 600, margin: 'auto' }}>
@@ -170,13 +173,18 @@ const guardar = async () => {
         <option value="Difícil">Difícil</option>
       </select>
 
+      <label className="felx items-center gap-2 mb-4">
+        <input
+          type="checkbox"
+          checked={esBanco}
+          onChange={(e) => setEsBanco(e.target.checked)}
+        />
+        Enviar al banco de preguntas
+      </label>
+
       <div className="flex gap-2">
-        <button onClick={guardar} className="btn flex-grow">
-          Guardar
-        </button>
-        <button onClick={volver} className="btn" style={{ backgroundColor: '#6b7280' }}>
-          Volver
-        </button>
+        <button onClick={guardar} className="btn flex-grow">Guardar</button>
+        <button onClick={volver} className="btn" style={{ backgroundColor: '#6b7280' }}>Volver</button>
       </div>
     </div>
   );
@@ -189,40 +197,41 @@ const CrearEnsayo = ({ preguntas, volver }) => {
   const [maxPreguntas, setMaxPreguntas] = useState(5);
   const [tiempoMinutos, setTiempoMinutos] = useState(30);
 
-  const preguntasFiltradas = preguntas.filter((p) => (p.materia || p.asignatura) === asignatura);
+  // Filtro robusto: compara normalizado
+  const preguntasFiltradas = preguntas.filter(
+    p => (p.asignatura ?? p.materia ?? '').trim() === (asignatura ?? '').trim()
+  );
 
-  const agregarPregunta = (id) => {
+  const agregarPreguntaId = (id) => {
     if (seleccionadas.includes(id) || seleccionadas.length >= maxPreguntas) return;
-    setSeleccionadas([...seleccionadas, id]);
+    setSeleccionadas(prev => [...prev, id]);
   };
 
   const eliminarPregunta = (id) => {
-    setSeleccionadas(seleccionadas.filter((pid) => pid !== id));
+    setSeleccionadas(prev => prev.filter(pid => pid !== id));
   };
 
   const guardarEnsayo = async () => {
-  if (!titulo || seleccionadas.length === 0 || !asignatura || !tiempoMinutos) {
-    alert('Agrega un título, selecciona asignatura, preguntas y tiempo.');
-    return;
-  }
+    if (!titulo || seleccionadas.length === 0 || !asignatura || !tiempoMinutos) {
+      alert('Agrega un título, selecciona asignatura, preguntas y tiempo.');
+      return;
+    }
 
-  try {
-    await axios.post('http://localhost:3000/api/ensayos', {
-      titulo,
-      asignatura,
-      tiempoMinutos,
-      preguntas: seleccionadas,
-      profesor_id: 1, 
-    });
+    try {
+      await axios.post('/api/ensayos', {
+        titulo,
+        asignatura,
+        tiempoMinutos,
+        preguntas: seleccionadas
+      });
 
-    alert('Ensayo guardado en base de datos.');
-    volver();
-  } catch (error) {
-    console.error(error);
-    alert('Error al guardar el ensayo');
-  }
-};
-
+      alert('Ensayo guardado en base de datos.');
+      volver();
+    } catch (error) {
+      console.error(error);
+      alert('Error al guardar el ensayo');
+    }
+  };
 
   return (
     <div className="container max-w-md mx-auto p-4 bg-white rounded shadow">
@@ -230,10 +239,11 @@ const CrearEnsayo = ({ preguntas, volver }) => {
 
       <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título del ensayo" className="input mb-4" />
       <label className="block mb-1">Selecciona asignatura</label>
-      <select value={asignatura} onChange={(e) => {
-        setAsignatura(e.target.value);
-        setSeleccionadas([]);
-      }} className="input mb-4">
+      <select
+        value={asignatura}
+        onChange={(e) => { setAsignatura(e.target.value); setSeleccionadas([]); }}
+        className="input mb-4"
+      >
         <option value="">-- Seleccionar asignatura --</option>
         <option value="Matemáticas">Matemáticas</option>
         <option value="Lenguaje">Lenguaje</option>
@@ -249,15 +259,19 @@ const CrearEnsayo = ({ preguntas, volver }) => {
       <input type="number" min="1" value={maxPreguntas} onChange={(e) => setMaxPreguntas(Number(e.target.value))} className="input mb-4" />
 
       <label className="block font-semibold mb-1">Agrega la(s) pregunta(s)</label>
-      <select onChange={(e) => {
-        const id = Number(e.target.value);
-        if (id) agregarPregunta(id);
-        e.target.value = '';
-      }} className="input mb-4" disabled={preguntasFiltradas.length === 0 || seleccionadas.length >= maxPreguntas}>
+      <select
+        onChange={(e) => {
+          const id = Number(e.target.value);
+          if (id) agregarPreguntaId(id);
+          e.target.value = '';
+        }}
+        className="input mb-4"
+        disabled={preguntasFiltradas.length === 0 || seleccionadas.length >= maxPreguntas}
+      >
         <option value="">-- Seleccionar pregunta --</option>
         {preguntasFiltradas.filter((p) => !seleccionadas.includes(p.id)).map((p) => (
           <option key={p.id} value={p.id}>
-            {p.texto} (Dificultad: {p.dificultad})
+            {(p.texto || p.pregunta)} (Dificultad: {p.dificultad})
           </option>
         ))}
       </select>
@@ -272,7 +286,7 @@ const CrearEnsayo = ({ preguntas, volver }) => {
           <ul className="list-disc ml-6">
             {preguntas.filter((p) => seleccionadas.includes(p.id)).map((p) => (
               <li key={p.id}>
-                {p.pregunta || p.texto}
+                {(p.pregunta || p.texto)}
                 <button onClick={() => eliminarPregunta(p.id)} className="text-red-500 text-sm ml-2 underline">
                   Quitar
                 </button>
@@ -282,12 +296,8 @@ const CrearEnsayo = ({ preguntas, volver }) => {
         </div>
       )}
 
-      <button onClick={guardarEnsayo} className="btn mt-2 w-full">
-        Guardar Ensayo
-      </button>
-      <button onClick={volver} className="btn" style={{ backgroundColor: '#6b7280', marginLeft: '10px' }}>
-        Volver
-      </button>
+      <button onClick={guardarEnsayo} className="btn mt-2 w-full">Guardar Ensayo</button>
+      <button onClick={volver} className="btn" style={{ backgroundColor: '#6b7280', marginLeft: '10px' }}>Volver</button>
     </div>
   );
 };

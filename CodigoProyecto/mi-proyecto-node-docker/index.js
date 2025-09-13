@@ -4,19 +4,18 @@ const pool = require('./db');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 
-app.use(cors());
+// frontend y variante 3001
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  credentials: true
+}));
 app.use(express.json());
 
 app.get('/', (req, res) => {
   res.send('Backend funcionando correctamente');
 });
-
-
-// Rutas
-const profesoresRoutes = require('./routes/profesores');
-app.use('/api/profesores', profesoresRoutes);
 
 // Ruta de prueba
 app.get('/ping', async (req, res) => {
@@ -27,28 +26,15 @@ app.get('/ping', async (req, res) => {
     res.status(500).json({ error: 'Error al conectar con la base de datos' });
   }
 });
-//ruta preguntas
-const preguntasRoutes = require('./routes/preguntas');
-app.use('/api/preguntas', preguntasRoutes);
-//opciones
-const opcionesRoutes = require('./routes/opciones');
-app.use('/api/opciones', opcionesRoutes);
 
-
-// Ensayos
-const ensayosRoutes = require('./routes/ensayos');
-app.use('/api/ensayos', ensayosRoutes);
-//resultados
-const resultadosRoutes = require('./routes/resultados');
-app.use('/api/resultados', resultadosRoutes);
-//autentificacion
-const loginRoute = require('./routes/auth');
-app.use('/api/login', loginRoute);
-
-
-
-
-
+// Rutas
+app.use('/api/profesores', require('./routes/profesores'));
+app.use('/api/preguntas', require('./routes/preguntas'));
+app.use('/api/opciones', require('./routes/opciones'));
+app.use('/api/ensayos', require('./routes/ensayos'));
+app.use('/api/resultados', require('./routes/resultados'));
+app.use('/api/login', require('./routes/auth'));
+app.use('/api/alumnos', require('./routes/alumnos'));
 
 app.listen(PORT, () => {
   console.log(`🚀 Servidor backend corriendo en http://localhost:${PORT}`);

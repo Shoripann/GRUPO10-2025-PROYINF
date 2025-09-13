@@ -1,31 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Profesor from './Profesor';
 import Alumno from './Alumno';
 import Resultados from './Resultados';
+import Banco from './Banco';             
 import './index.css';
 
-// Wrapper para Alumno que extrae el ID desde location.state
-const AlumnoWrapper = () => {
+const ProfesorWrapper = ({ usuario }) => {
   const location = useLocation();
-  const alumno = location.state?.user;
-
-  if (!alumno) {
-    return <p>Error: No se encontró información del alumno.</p>;
-  }
-
-  return <Alumno alumnoId={alumno.id} />;
-};
-
-// Wrapper para Profesor que extrae el usuario desde location.state
-const ProfesorWrapper = () => {
-  const location = useLocation();
-  const profesor = location.state?.user;
+  const profesor = usuario || location.state?.user;
 
   if (!profesor) {
     return <p>Error: No se encontró información del profesor.</p>;
   }
-
   return <Profesor username={profesor.nombre} />;
 };
 
@@ -41,14 +28,14 @@ const Home = ({ setModo }) => (
 );
 
 // Página de login
-const Login = ({ modo, setModo, setLogueado, setUsername, setPassword }) => {
+const Login = ({ modo, setModo, onLoginOk }) => {
   const [userInput, setUserInput] = useState('');
   const [passInput, setPassInput] = useState('');
   const navigate = useNavigate();
 
   const manejarLogin = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/login', {
+      const response = await fetch('/api/login', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -59,35 +46,30 @@ const Login = ({ modo, setModo, setLogueado, setUsername, setPassword }) => {
           password: passInput.trim() 
         }),
       });
-
-      const data = await response.json();
+      
+      const raw = await response.text();
+      let data = null;
+      let text = raw;
+      try { data = JSON.parse(raw); } catch {}
 
       if (!response.ok) {
-        throw new Error(data.error || 'Credenciales incorrectas');
+        const msg = (data && data.error) || text || `HTTP ${response.status}`;
+        throw new Error(msg);
       }
-
-      if (!data.role || !data.user) {
+      if (!data || !data.role || !data.user) {
         throw new Error('Respuesta del servidor inválida');
       }
 
-      setUsername(userInput);
-      setPassword(passInput);
-      setLogueado(true);
+      const sesion = { role: data.role, user: data.user };
+      localStorage.setItem('sesion', JSON.stringify(sesion));
+      onLoginOk(sesion);
 
       if (data.role === 'profesor') {
-        navigate('/profesor', {
-          state: {
-            user: data.user,
-            authToken: 'simulated-token'
-          }
-        });
+        navigate('/profesor');
       } else if (data.role === 'alumno') {
-        navigate('/alumno', {
-          state: {
-            user: data.user,
-            authToken: 'simulated-token'
-          }
-        });
+        navigate('/alumno');
+      } else {
+        navigate('/');
       }
 
     } catch (err) {
@@ -126,17 +108,35 @@ const Login = ({ modo, setModo, setLogueado, setUsername, setPassword }) => {
   );
 };
 
-// Ruta protegida
-const RutaPrivada = ({ logueado, children }) => {
-  return logueado ? children : <Navigate to="/" />;
+
+const RutaPrivada = ({ isAllowed, children }) => {
+  return isAllowed ? children : <Navigate to="/" />;
 };
 
-// App principal
+
 const App = () => {
   const [modo, setModo] = useState(null);
   const [logueado, setLogueado] = useState(false);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [rol, setRol] = useState(null);         
+  const [usuario, setUsuario] = useState(null);  
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('sesion'));
+      if (saved && saved.role && saved.user) {
+        setRol(saved.role);
+        setUsuario(saved.user);
+        setLogueado(true);
+      }
+    } catch {
+    }
+  }, []);
+
+  const handleLoginOk = ({ role, user }) => {
+    setRol(role);
+    setUsuario(user);
+    setLogueado(true);
+  };
 
   return (
     <Router>
@@ -150,9 +150,7 @@ const App = () => {
               <Login
                 modo={modo}
                 setModo={setModo}
-                setLogueado={setLogueado}
-                setUsername={setUsername}
-                setPassword={setPassword}
+                onLoginOk={handleLoginOk}
               />
             )
           }
@@ -161,8 +159,8 @@ const App = () => {
         <Route
           path="/profesor"
           element={
-            <RutaPrivada logueado={logueado}>
-              <ProfesorWrapper />
+            <RutaPrivada isAllowed={logueado && rol === 'profesor'}>
+              <ProfesorWrapper usuario={usuario} />
             </RutaPrivada>
           }
         />
@@ -170,8 +168,17 @@ const App = () => {
         <Route
           path="/alumno"
           element={
-            <RutaPrivada logueado={logueado}>
-              <Alumno alumnoId={1} />
+            <RutaPrivada isAllowed={logueado && rol === 'alumno'}>
+              <Alumno alumnoId={usuario?.id} />
+            </RutaPrivada>
+          }
+        />
+
+        <Route
+          path="/banco"
+          element={
+            <RutaPrivada isAllowed={logueado && rol === 'alumno'}>
+              <Banco />
             </RutaPrivada>
           }
         />
@@ -179,7 +186,7 @@ const App = () => {
         <Route
           path="/resultados"
           element={
-            <RutaPrivada logueado={logueado}>
+            <RutaPrivada isAllowed={logueado}>
               <Resultados />
             </RutaPrivada>
           }
