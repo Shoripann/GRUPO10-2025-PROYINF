@@ -18,4 +18,24 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Obtener un alumno por id (incluye curso_id)
+router.get('/:id', async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT a.id, a.nombre, a.email, a.curso_id,
+              c.nombre AS curso, c.letra
+       FROM alumnos a
+       LEFT JOIN cursos c ON a.curso_id = c.id
+       WHERE a.id = $1`,
+      [req.params.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Alumno no encontrado' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Error al obtener alumno por id:', err);
+    res.status(500).json({ error: 'Error al obtener alumno' });
+  }
+});
+
+
 module.exports = router;

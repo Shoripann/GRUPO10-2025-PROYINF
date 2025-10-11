@@ -11,6 +11,8 @@ const Alumno = ({ alumnoId }) => {
   const [indiceActual, setIndiceActual] = useState(0);
   const [tiempoRestante, setTiempoRestante] = useState(null);
   const [resultados, setResultados] = useState([]);
+  const [cursoId, setCursoId] = useState(null);
+
 
   const intervalRef = useRef(null);
 
@@ -19,24 +21,36 @@ const Alumno = ({ alumnoId }) => {
   const navigate = useNavigate();
 
   // Cargar datos iniciales
-  useEffect(() => {
-    const cargarDatos = async () => {
-      try {
-        const resDisponibles = await axios.get('/api/ensayos/disponibles');
+useEffect(() => {
+  const cargarDatos = async () => {
+    try {
+      // 🔹 1) Traer los datos del alumno (para conocer su curso_id)
+      const resAlumno = await axios.get(`/api/alumnos/${alumnoId}`);
+      const curso = resAlumno?.data?.curso_id ?? resAlumno?.data?.cursoId ?? null;
+      setCursoId(curso);
+
+      // 🔹 2) Luego cargar ensayos disponibles solo si ya tenemos curso_id
+      if (curso) {
+        const resDisponibles = await axios.get('/api/ensayos/disponibles', {
+          params: { curso_id: Number(curso) }
+        });
         setEnsayosDisponibles(resDisponibles.data);
-
-        const resRealizados = await axios.get(`/api/ensayos/alumno/${alumnoId}`);
-        setEnsayosRealizados(resRealizados.data);
-
-        const resResultados = await axios.get(`/api/resultados/${alumnoId}`);
-        setResultados(resResultados.data);
-      } catch (error) {
-        console.error('Error al cargar datos:', error);
       }
-    };
 
-    cargarDatos();
-  }, [alumnoId]);
+      // 🔹 3) Ensayos realizados y resultados
+      const resRealizados = await axios.get(`/api/ensayos/alumno/${alumnoId}`);
+      setEnsayosRealizados(resRealizados.data);
+
+      const resResultados = await axios.get(`/api/resultados/${alumnoId}`);
+      setResultados(resResultados.data);
+    } catch (error) {
+      console.error('Error al cargar datos:', error);
+    }
+  };
+
+  cargarDatos();
+}, [alumnoId]);
+
 
   // Temporizador
   const iniciarTemporizador = (minutos) => {
@@ -152,17 +166,103 @@ const Alumno = ({ alumnoId }) => {
     const secs = segundos % 60;
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
+  const formatFecha = (fecha) => {
+  if (!fecha) return 'Sin fecha';
+  try {
+    const d = new Date(fecha);
+    return d.toLocaleDateString();
+  } catch {
+    return String(fecha);
+  }
+};
+
+const fmtPuntaje = (p) => {
+  if (p === null || p === undefined) return '—';
+  const n = Number(p);
+  return Number.isFinite(n) ? `${n.toFixed(2)} pts` : String(p);
+};
+
 
   // Vista de ensayo activo
-  if (ensayoActivo) {
-    const preguntaActual = ensayoActivo.preguntas[indiceActual];
+  // Vista de ensayo activo
+if (ensayoActivo) {
+  const preguntaActual = ensayoActivo.preguntas[indiceActual];
 
-    return (
-      <div style={{ display: 'flex', height: '90vh', padding: '20px', maxWidth: '1200px', margin: '0 auto', gap: '20px' }}>
-        {/* ... el resto igual */}
+  return (
+    <div style={{
+      padding: '20px',
+      maxWidth: '800px',
+      margin: '0 auto',
+      textAlign: 'center'
+    }}>
+      <h2 style={{ marginBottom: '10px' }}>{ensayoActivo.titulo}</h2>
+
+      {tiempoRestante !== null && (
+        <p style={{ color: 'red', fontWeight: 'bold' }}>
+          Tiempo restante: {formatTiempo(tiempoRestante)}
+        </p>
+      )}
+
+      <div style={{
+        border: '1px solid #ddd',
+        borderRadius: '8px',
+        padding: '20px',
+        marginTop: '20px',
+        backgroundColor: '#fff'
+      }}>
+        <h3 style={{ marginBottom: '10px' }}>
+          {preguntaActual.texto}
+        </h3>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {preguntaActual.opciones.map((opcion, index) => (
+            <button
+              key={opcion.id}
+              onClick={() => seleccionarRespuesta(preguntaActual.id, index)}
+              style={{
+                padding: '10px',
+                borderRadius: '6px',
+                border: '1px solid #ccc',
+                backgroundColor: respuestas[preguntaActual.id] === index ? '#2563eb' : '#f3f4f6',
+                color: respuestas[preguntaActual.id] === index ? 'white' : 'black',
+                cursor: 'pointer'
+              }}
+            >
+              {opcion.texto}
+            </button>
+          ))}
+        </div>
       </div>
-    );
-  }
+
+      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
+        <button
+          onClick={() => setIndiceActual(prev => Math.max(prev - 1, 0))}
+          disabled={indiceActual === 0}
+          style={{ padding: '10px 20px', borderRadius: '6px', cursor: 'pointer' }}
+        >
+          Anterior
+        </button>
+
+        {indiceActual < ensayoActivo.preguntas.length - 1 ? (
+          <button
+            onClick={() => setIndiceActual(prev => prev + 1)}
+            style={{ padding: '10px 20px', borderRadius: '6px', backgroundColor: '#2563eb', color: 'white', cursor: 'pointer' }}
+          >
+            Siguiente
+          </button>
+        ) : (
+          <button
+            onClick={enviarRespuestas}
+            style={{ padding: '10px 20px', borderRadius: '6px', backgroundColor: '#16a34a', color: 'white', cursor: 'pointer' }}
+          >
+            Enviar respuestas
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
   // Vista principal (sin ensayo activo)
   return (
@@ -260,7 +360,50 @@ const Alumno = ({ alumnoId }) => {
           Ensayos Realizados
         </h2>
 
-        {/* ... el resto igual */}
+        {/* Ensayos realizados */}
+{ensayosRealizados.length === 0 ? (
+  <p style={{ textAlign: 'center', color: '#6b7280' }}>
+    Aún no tienes ensayos realizados.
+  </p>
+) : (
+  <div style={{ display: 'grid', gap: 12 }}>
+    {ensayosRealizados.map((r) => (
+      <div
+        key={r.id ?? `${r.ensayo_id}-${r.fecha}`}
+        style={{
+          border: '1px solid #e5e7eb',
+          borderRadius: 8,
+          background: '#fff',
+          padding: 12,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}
+      >
+        <div>
+          <div style={{ fontWeight: 600 }}>
+            {r.titulo || `Ensayo #${r.ensayo_id ?? r.id}`}
+          </div>
+          <div style={{ fontSize: 14, color: '#6b7280' }}>
+            {(r.asignatura ? `${r.asignatura} • ` : '') + formatFecha(r.fecha)}
+          </div>
+        </div>
+
+        <div style={{
+          fontWeight: 700,
+          padding: '6px 10px',
+          borderRadius: 6,
+          background: '#f3f4f6',
+          minWidth: 90,
+          textAlign: 'center'
+        }}>
+          {fmtPuntaje(r.puntaje)}
+        </div>
+      </div>
+    ))}
+  </div>
+)}
+
       </div>
     </div>
   );

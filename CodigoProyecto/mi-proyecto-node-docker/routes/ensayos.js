@@ -4,11 +4,14 @@ const pool = require('../db');
 
 // Crear un nuevo ensayo con sus preguntas
 router.post('/', async (req, res) => {
-  const { titulo, asignatura, tiempoMinutos, preguntas } = req.body;
+  const { titulo, asignatura, tiempoMinutos, curso_id, preguntas } = req.body;
 
-  // Validaciones
+  // Validaciones básicas
   if (!titulo || !asignatura || !Number.isInteger(tiempoMinutos) || tiempoMinutos <= 0) {
     return res.status(400).json({ error: 'Faltan datos: titulo, asignatura y tiempoMinutos (>0) son obligatorios.' });
+  }
+  if (curso_id == null || !Number.isInteger(Number(curso_id))) {
+    return res.status(400).json({ error: 'curso_id es obligatorio y debe ser entero.' });
   }
   if (!Array.isArray(preguntas) || preguntas.length === 0) {
     return res.status(400).json({ error: 'Debes enviar un arreglo de IDs de preguntas (no vacío).' });
@@ -18,7 +21,14 @@ router.post('/', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // Validacion
+    // Validar que el curso exista
+    const cursoRes = await client.query('SELECT 1 FROM cursos WHERE id = $1', [Number(curso_id)]);
+    if (cursoRes.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'El curso especificado no existe.' });
+    }
+
+    // Validar preguntas existentes
     const uniqIds = [...new Set(preguntas.map(Number).filter(n => Number.isInteger(n)))];
     const existRes = await client.query(
       'SELECT id FROM preguntas WHERE id = ANY($1::int[])',
@@ -31,20 +41,22 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Algunas preguntas no existen', faltantes });
     }
 
+    // INSERT incluyendo curso_id
     const insertEnsayo = `
-      INSERT INTO ensayos (titulo, fecha, asignatura, num_preguntas, tiempo_minutos, puntaje)
-      VALUES ($1, CURRENT_DATE, $2, $3, $4, 0)
-      RETURNING id
+      INSERT INTO ensayos (titulo, fecha, asignatura, num_preguntas, tiempo_minutos, puntaje, curso_id)
+      VALUES ($1, CURRENT_DATE, $2, $3, $4, 0, $5)
+      RETURNING id, curso_id
     `;
     const ensayoRes = await client.query(insertEnsayo, [
       titulo,
       asignatura,
       uniqIds.length,
-      tiempoMinutos
+      tiempoMinutos,
+      Number(curso_id)
     ]);
-    const ensayoId = ensayoRes.rows[0].id;
+    const { id: ensayoId } = ensayoRes.rows[0];
 
-    // Vincular preguntas -> ensayo_pregunta
+    // Vincular preguntas
     for (const pid of uniqIds) {
       await client.query(
         'INSERT INTO ensayo_pregunta (ensayo_id, pregunta_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
@@ -53,16 +65,16 @@ router.post('/', async (req, res) => {
     }
 
     await client.query('COMMIT');
-    return res.status(201).json({ id: ensayoId, mensaje: 'Ensayo creado' });
+    return res.status(201).json({ id: ensayoId, mensaje: 'Ensayo creado', curso_id: Number(curso_id) });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error creando ensayo:', err);
-    // Error típico: columna que no existe
     return res.status(500).json({ error: 'Error al crear el ensayo' });
   } finally {
     client.release();
   }
 });
+
 
 module.exports = router;
 
@@ -78,19 +90,33 @@ router.get('/', async (req, res) => {
 });
 
 // Obtener ensayos disponibles (sin resolver)
+// routes/ensayos.js
 router.get('/disponibles', async (req, res) => {
+  const { curso_id } = req.query; // opcional
   try {
-    const result = await pool.query(`
-      SELECT id, titulo, asignatura, num_preguntas, tiempo_minutos AS "tiempoMinutos"
+    let sql = `
+      SELECT id, titulo, asignatura, num_preguntas, tiempo_minutos, fecha, curso_id
       FROM ensayos
-      ORDER BY fecha DESC
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error al obtener ensayos disponibles:', err.message);
-    res.status(500).json({ error: 'Error al obtener ensayos disponibles' });
+      WHERE TRUE
+    `;
+    const params = [];
+
+  if (curso_id !== undefined && curso_id !== null && curso_id !== '') {
+    sql += ' AND curso_id = $1';
+    params.push(Number(curso_id));
+  }
+
+
+    sql += ' ORDER BY fecha DESC, id DESC';
+
+    const { rows } = await pool.query(sql, params);
+    res.json(rows);
+  } catch (e) {
+    console.error('Error listando ensayos disponibles:', e);
+    res.status(500).json({ error: 'No se pudieron listar los ensayos' });
   }
 });
+
 
 // Obtener preguntas de un ensayo
 router.get('/:id/preguntas', async (req, res) => {

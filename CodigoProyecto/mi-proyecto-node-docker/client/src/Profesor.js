@@ -196,8 +196,19 @@ const CrearEnsayo = ({ preguntas, volver }) => {
   const [asignatura, setAsignatura] = useState('');
   const [maxPreguntas, setMaxPreguntas] = useState(5);
   const [tiempoMinutos, setTiempoMinutos] = useState(30);
+  const [cursoDelEnsayo, setCursoDelEnsayo] = useState(null);
+  const [cursos, setCursos] = useState([]);
 
-  // Filtro robusto: compara normalizado
+  // Cargar lista de cursos disponibles
+  useEffect(() => {
+    axios.get('/api/cursos')
+      .then(res => setCursos(res.data))
+      .catch(err => {
+        console.error('Error al cargar cursos:', err);
+        setCursos([]);
+      });
+  }, []);
+
   const preguntasFiltradas = preguntas.filter(
     p => (p.asignatura ?? p.materia ?? '').trim() === (asignatura ?? '').trim()
   );
@@ -212,8 +223,8 @@ const CrearEnsayo = ({ preguntas, volver }) => {
   };
 
   const guardarEnsayo = async () => {
-    if (!titulo || seleccionadas.length === 0 || !asignatura || !tiempoMinutos) {
-      alert('Agrega un título, selecciona asignatura, preguntas y tiempo.');
+    if (!titulo || seleccionadas.length === 0 || !asignatura || !tiempoMinutos || cursoDelEnsayo==null) {
+      alert('Completa título, asignatura, curso, preguntas y tiempo.');
       return;
     }
 
@@ -222,13 +233,14 @@ const CrearEnsayo = ({ preguntas, volver }) => {
         titulo,
         asignatura,
         tiempoMinutos,
-        preguntas: seleccionadas
+        curso_id: Number(cursoDelEnsayo),
+        preguntas: seleccionadas,
       });
 
-      alert('Ensayo guardado en base de datos.');
+      alert('✅ Ensayo guardado correctamente');
       volver();
     } catch (error) {
-      console.error(error);
+      console.error('❌ Error al guardar ensayo:', error);
       alert('Error al guardar el ensayo');
     }
   };
@@ -237,7 +249,13 @@ const CrearEnsayo = ({ preguntas, volver }) => {
     <div className="container max-w-md mx-auto p-4 bg-white rounded shadow">
       <h2 className="text-2xl font-semibold mb-4">Crear Ensayo</h2>
 
-      <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título del ensayo" className="input mb-4" />
+      <input
+        value={titulo}
+        onChange={(e) => setTitulo(e.target.value)}
+        placeholder="Título del ensayo"
+        className="input mb-4"
+      />
+
       <label className="block mb-1">Selecciona asignatura</label>
       <select
         value={asignatura}
@@ -253,12 +271,42 @@ const CrearEnsayo = ({ preguntas, volver }) => {
         <option value="Historia">Historia</option>
       </select>
 
-      <label className="block mb-1">Tiempo (minutos)</label>
-      <input type="number" min="1" value={tiempoMinutos} onChange={(e) => setTiempoMinutos(Number(e.target.value))} className="input mb-4" />
-      <label className="block mb-1">Número máximo de preguntas</label>
-      <input type="number" min="1" value={maxPreguntas} onChange={(e) => setMaxPreguntas(Number(e.target.value))} className="input mb-4" />
+      <label className="block mb-1">Curso al que se dirige el ensayo</label>
+      <select
+          value={cursoDelEnsayo ?? ''}
+          onChange={(e) => {
+            const v = e.target.value;
+            setCursoDelEnsayo(v === '' ? null : Number(v)); // <-- ¡numérico!
+        }}
+        className="input mb-4"
+      >
+        <option value="">-- Seleccionar curso --</option>
+        {cursos.map((c) => (
+          <option key={c.id} value={String(c.id)}>
+            {c.nombre} {c.letra ? `(${c.letra})` : ''}
+          </option>
+        ))}
+      </select>
 
-      <label className="block font-semibold mb-1">Agrega la(s) pregunta(s)</label>
+      <label className="block mb-1">Tiempo (minutos)</label>
+      <input
+        type="number"
+        min="1"
+        value={tiempoMinutos}
+        onChange={(e) => setTiempoMinutos(Number(e.target.value))}
+        className="input mb-4"
+      />
+
+      <label className="block mb-1">Número máximo de preguntas</label>
+      <input
+        type="number"
+        min="1"
+        value={maxPreguntas}
+        onChange={(e) => setMaxPreguntas(Number(e.target.value))}
+        className="input mb-4"
+      />
+
+      <label className="block font-semibold mb-1">Agregar preguntas</label>
       <select
         onChange={(e) => {
           const id = Number(e.target.value);
@@ -276,10 +324,6 @@ const CrearEnsayo = ({ preguntas, volver }) => {
         ))}
       </select>
 
-      {preguntasFiltradas.length === 0 && (
-        <p className="text-gray-500 mb-4">No hay preguntas disponibles para esta asignatura.</p>
-      )}
-
       {seleccionadas.length > 0 && (
         <div className="mb-4">
           <h4 className="font-medium mb-2">Preguntas seleccionadas:</h4>
@@ -287,7 +331,10 @@ const CrearEnsayo = ({ preguntas, volver }) => {
             {preguntas.filter((p) => seleccionadas.includes(p.id)).map((p) => (
               <li key={p.id}>
                 {(p.pregunta || p.texto)}
-                <button onClick={() => eliminarPregunta(p.id)} className="text-red-500 text-sm ml-2 underline">
+                <button
+                  onClick={() => eliminarPregunta(p.id)}
+                  className="text-red-500 text-sm ml-2 underline"
+                >
                   Quitar
                 </button>
               </li>
@@ -296,10 +343,19 @@ const CrearEnsayo = ({ preguntas, volver }) => {
         </div>
       )}
 
-      <button onClick={guardarEnsayo} className="btn mt-2 w-full">Guardar Ensayo</button>
-      <button onClick={volver} className="btn" style={{ backgroundColor: '#6b7280', marginLeft: '10px' }}>Volver</button>
+      <button onClick={guardarEnsayo} className="btn mt-2 w-full">
+        Guardar Ensayo
+      </button>
+      <button
+        onClick={volver}
+        className="btn"
+        style={{ backgroundColor: '#6b7280', marginLeft: '10px' }}
+      >
+        Volver
+      </button>
     </div>
   );
 };
+
 
 export default Profesor;
