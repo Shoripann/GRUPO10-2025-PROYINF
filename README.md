@@ -32,6 +32,8 @@ credencial profesor:profesor@profesor.com    clave:profesor
 
 credencial alumno:camilo@ejemplo.com clave:1234
 
+credencial alumno2:gabriel@gabriel.com  clave:gabriel
+
 ## Wiki
 
 Puede acceder a la Wiki mediante este [enlace](https://github.com/Shoripann/GRUPO10-2025-PROYINF/wiki#grupo-10).
