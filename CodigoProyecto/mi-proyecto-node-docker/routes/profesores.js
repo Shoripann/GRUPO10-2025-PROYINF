@@ -32,4 +32,26 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Obtiene a todos los profesores
+router.get('/', async (req, res) => {
+  try {
+    const result = await db.query('SELECT id, nombre, email, asignatura FROM profesores');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error al obtener profesores:', err);
+    res.status(500).json({ error: 'Error al obtener profesores' });
+  }
+});
+
+// Eliminar a todos los profesores
+router.delete('/', async (req, res) => {
+  try {
+    await db.query('DELETE FROM profesores');
+    res.json({ mensaje: 'Profesores eliminados correctamente' });
+  } catch (err) {
+    console.error('Error eliminando los profesores:', err);
+    res.status(500).json({ error: 'Error eliminando los profesores' });
+  }
+});
+
 module.exports = router;
