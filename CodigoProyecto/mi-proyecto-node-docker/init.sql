@@ -101,3 +101,52 @@ ON CONFLICT (id) DO NOTHING;
 
 ALTER TABLE resultados
 ADD COLUMN IF NOT EXISTS respuestas JSONB;
+
+-- Crear un ensayo de prueba
+INSERT INTO ensayos (id, titulo, asignatura, num_preguntas, tiempo_minutos, curso_id)
+VALUES (1, 'Ensayo Diagnóstico PAES Matemáticas', 'Matemáticas', 3, 45, 1)
+ON CONFLICT (id) DO NOTHING;
+
+--Crear preguntas (enlazadas al profesor id=1)
+INSERT INTO preguntas (id, texto, dificultad, materia, profesor_id, es_banco)
+VALUES
+(1, '¿Cuál es el resultado de 2 + 3 × 4?', 'Fácil', 'Matemáticas', 1, true),
+(2, 'Si f(x) = 2x + 5, ¿cuál es el valor de f(3)?', 'Media', 'Matemáticas', 1, true),
+(3, '¿Cuál de los siguientes es un número primo?', 'Fácil', 'Matemáticas', 1, true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Crear opciones para cada pregunta
+INSERT INTO opciones (pregunta_id, texto, es_correcta)
+VALUES
+-- P1
+(1, '14', false),
+(1, '20', true),
+(1, '10', false),
+(1, '12', false),
+-- P2
+(2, '10', false),
+(2, '11', true),
+(2, '15', false),
+(2, '9', false),
+-- P3
+(3, '4', false),
+(3, '7', true),
+(3, '9', false),
+(3, '6', false);
+
+-- Vincular las preguntas al ensayo
+INSERT INTO ensayo_pregunta (ensayo_id, pregunta_id)
+VALUES
+(1, 1),
+(1, 2),
+(1, 3)
+ON CONFLICT DO NOTHING;
+
+--  Crear resultado simulado (ensayo resuelto)
+INSERT INTO resultados (ensayo_id, alumno_id, puntaje, respuestas)
+VALUES
+(1, 1, 85.50, '{
+  "1": "20",
+  "2": "11",
+  "3": "7"
+}');
