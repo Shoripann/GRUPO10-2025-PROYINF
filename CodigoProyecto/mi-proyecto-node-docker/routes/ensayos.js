@@ -75,9 +75,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-
-module.exports = router;
-
 // Obtener todos los ensayos
 router.get('/', async (req, res) => {
   try {
@@ -90,8 +87,6 @@ router.get('/', async (req, res) => {
 });
 
 // Obtener ensayos disponibles (sin resolver)
-// routes/ensayos.js
-// En ensayos.js, modifica el endpoint /disponibles para usar el mismo alias:
 router.get('/disponibles', async (req, res) => {
   const { curso_id } = req.query;
   try {
@@ -123,7 +118,6 @@ router.get('/disponibles', async (req, res) => {
     res.status(500).json({ error: 'No se pudieron listar los ensayos' });
   }
 });
-
 
 // Obtener preguntas de un ensayo
 router.get('/:id/preguntas', async (req, res) => {
@@ -207,8 +201,6 @@ router.get('/:id/revision/:alumnoId', async (req, res) => {
     const intento = intentoRes.rows[0];
     const respuestas = intento.respuestas || {}; 
 
-    console.log('🔍 DEBUG - Respuestas guardadas:', JSON.stringify(respuestas)); // DEBUG
-
     const preguntasRes = await pool.query(
       `SELECT p.id, p.texto, p.dificultad, p.materia, p.profesor_id
        FROM preguntas p
@@ -242,7 +234,7 @@ router.get('/:id/revision/:alumnoId', async (req, res) => {
           id: o.id,
           texto: o.texto,
           es_correcta: o.es_correcta,
-          seleccionada: (seleccionadaIndex === idx) // 🔥 Usar índice convertido
+          seleccionada: (seleccionadaIndex === idx)
         }));
 
         const correctaIndex = optsRes.rows.findIndex(o => o.es_correcta === true);
