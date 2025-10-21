@@ -91,21 +91,28 @@ router.get('/', async (req, res) => {
 
 // Obtener ensayos disponibles (sin resolver)
 // routes/ensayos.js
+// En ensayos.js, modifica el endpoint /disponibles para usar el mismo alias:
 router.get('/disponibles', async (req, res) => {
-  const { curso_id } = req.query; // opcional
+  const { curso_id } = req.query;
   try {
     let sql = `
-      SELECT id, titulo, asignatura, num_preguntas, tiempo_minutos, fecha, curso_id
+      SELECT 
+        id, 
+        titulo, 
+        asignatura, 
+        num_preguntas, 
+        tiempo_minutos AS "tiempoMinutos", 
+        fecha, 
+        curso_id
       FROM ensayos
       WHERE TRUE
     `;
     const params = [];
 
-  if (curso_id !== undefined && curso_id !== null && curso_id !== '') {
-    sql += ' AND curso_id = $1';
-    params.push(Number(curso_id));
-  }
-
+    if (curso_id !== undefined && curso_id !== null && curso_id !== '') {
+      sql += ' AND curso_id = $1';
+      params.push(Number(curso_id));
+    }
 
     sql += ' ORDER BY fecha DESC, id DESC';
 
@@ -200,6 +207,7 @@ router.get('/:id/revision/:alumnoId', async (req, res) => {
     const intento = intentoRes.rows[0];
     const respuestas = intento.respuestas || {}; 
 
+    console.log('🔍 DEBUG - Respuestas guardadas:', JSON.stringify(respuestas)); // DEBUG
 
     const preguntasRes = await pool.query(
       `SELECT p.id, p.texto, p.dificultad, p.materia, p.profesor_id
@@ -221,12 +229,20 @@ router.get('/:id/revision/:alumnoId', async (req, res) => {
            ORDER BY id`,
           [preg.id]
         );
+        const respuestaAlumno = respuestas[preg.id];
+        let seleccionadaIndex = null;
+        
+        if (respuestaAlumno !== undefined && respuestaAlumno !== null) {
+          seleccionadaIndex = typeof respuestaAlumno === 'string' 
+            ? parseInt(respuestaAlumno, 10) 
+            : respuestaAlumno;
+        }
 
         const opciones = optsRes.rows.map((o, idx) => ({
           id: o.id,
           texto: o.texto,
           es_correcta: o.es_correcta,
-          seleccionada: (respuestas[preg.id] === idx)
+          seleccionada: (seleccionadaIndex === idx) // 🔥 Usar índice convertido
         }));
 
         const correctaIndex = optsRes.rows.findIndex(o => o.es_correcta === true);
@@ -237,7 +253,7 @@ router.get('/:id/revision/:alumnoId', async (req, res) => {
           materia: preg.materia,
           dificultad: preg.dificultad,
           opciones,
-          seleccionadaIndex: respuestas[preg.id] ?? null,
+          seleccionadaIndex: seleccionadaIndex,
           correctaIndex
         };
       })
