@@ -32,7 +32,7 @@ const Login = () => {
       try {data = JSON.parse(raw);} catch {}
 
       if (!response.ok) {
-        const msg = (data && data.error) || text || 'HTTP ${response.status}';
+        const msg = (data && data.error) || text || `HTTP ${response.status}`;
         throw new Error(msg);
       }
 
@@ -44,22 +44,13 @@ const Login = () => {
       localStorage.setItem('usuario', JSON.stringify(data.user));
       localStorage.setItem('rol', data.role);
 
-      // Redirección basada en el rol
-      if (data.role === 'profesor') {
-        navigate('/profesor', { 
-          state: { 
-            user: data.user,
-            authToken: 'simulated-token' 
-          } 
-        });
-      } else if (data.role === 'alumno') {
-        navigate('/alumno', { 
-          state: { 
-            user: data.user,
-            authToken: 'simulated-token'
-          } 
-        });
-      }
+      navigate('/dashboard', { 
+        state: { 
+          user: data.user,
+          role: data.role,
+          authToken: 'simulated-token' 
+        } 
+      });
 
     } catch (err) {
       setError(err.message || 'Error al iniciar sesión');
@@ -72,6 +63,9 @@ const Login = () => {
   return (
     <div className="max-w-sm mx-auto mt-20 p-6 border rounded shadow-lg bg-white">
       <h2 className="text-2xl font-bold mb-6 text-center">Iniciar Sesión</h2>
+      <p className="text-sm text-gray-600 mb-6 text-center">
+        Ingresa con tu correo institucional - El sistema detectará automáticamente si eres profesor o estudiante
+      </p>
       <form onSubmit={handleLogin}>
         <div className="mb-4">
           <label htmlFor="email" className="block text-sm font-medium mb-1">
