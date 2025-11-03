@@ -11,9 +11,17 @@ router.post('/', async (req, res) => {
     if (!texto || !dificultad || !materiaFinal) {
       return res.status(400).json({ error: 'Faltan campos: texto, dificultad y asignatura/materia' });
     }
+    let profesorIdFinal = null;
+    if (profesor_id !== undefined && profesor_id !== null) {
+      const profesorCheck = await db.query('SELECT id FROM profesores WHERE id = $1', [profesor_id]);
+      if (profesorCheck.rows.length === 0) {
+        return res.status(400).json({ error: 'El profesor especificado no existe' });
+      }
+      profesorIdFinal = profesor_id;
+    } 
 
     const r = await db.query(
-      `INSERT INTO preguntas (texto, dificultad, materia, profesor_id, es_banco)
+      `INSERT INTO preguntas (texto, dificultad, materia, profesorIdFinal, es_banco)
        VALUES ($1,$2,$3,$4,$5)
        RETURNING id`,
       [texto, dificultad, materiaFinal, profesor_id ?? null, Boolean(es_banco)]
