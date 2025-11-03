@@ -67,36 +67,53 @@ const Alumno = ({ alumnoId }) => {
   };
 
   // Comenzar un ensayo
-  const comenzarEnsayo = async (ensayo) => {
-    try {
-      const res = await axios.get(`/api/ensayos/${ensayo.id}/preguntas`);
+ const comenzarEnsayo = async (ensayo) => {
+  try {
+    const res = await axios.get(`/api/ensayos/${ensayo.id}/preguntas`);
 
-      setEnsayoActivo({
-        ...ensayo,
-        preguntas: res.data.map(p => ({
-          id: p.id,
-          texto: p.texto,
-          opciones: p.opciones.map((o, index) => ({
-            id: o.id,
-            texto: o.texto,
-            esCorrecta: o.es_correcta === true,
-            index
-          }))
+    const ensayoObj = {
+      ...ensayo,
+      preguntas: res.data.map(p => ({
+        id: p.id,
+        texto: p.texto,
+        opciones: p.opciones.map((o, index) => ({
+          id: o.id,
+          texto: o.texto,
+          esCorrecta: o.es_correcta === true,
+          index
         }))
-      });
+      }))
+    };
 
-      setIndiceActual(0);
-      setRespuestas({});
-
-      const tiempoEnMinutos = ensayo.tiempoMinutos;
-      if (tiempoEnMinutos) {
-        iniciarTemporizador(tiempoEnMinutos);
+    setEnsayoActivo(ensayoObj);
+    setIndiceActual(0);
+   
+    try {
+      const respParcial = await axios.get(`/api/resultados/parcial/${ensayo.id}/${alumnoId}`);
+      
+      if (respParcial.status === 200 && respParcial.data && respParcial.data.respuestas) {
+        console.log('🔄 Progreso previo cargado', respParcial.data);
+        setRespuestas(respParcial.data.respuestas);
+        
+      } else {
+        
+        setRespuestas({});
       }
-    } catch (error) {
-      console.error('Error al comenzar ensayo:', error);
-      alert('Error al cargar el ensayo');
+    } catch (errParcial) {
+     
+      console.warn('No se encontró progreso parcial o error al cargarlo:', errParcial?.response?.status || errParcial);
+      setRespuestas({});
     }
-  };
+
+    const tiempoEnMinutos = ensayo.tiempoMinutos;
+    if (tiempoEnMinutos) {
+      iniciarTemporizador(tiempoEnMinutos);
+    }
+  } catch (error) {
+    console.error('Error al comenzar ensayo:', error);
+    alert('Error al cargar el ensayo');
+  }
+};
 
   const seleccionarRespuesta = (preguntaId, opcionIndex) => {
     setRespuestas(prev => ({
