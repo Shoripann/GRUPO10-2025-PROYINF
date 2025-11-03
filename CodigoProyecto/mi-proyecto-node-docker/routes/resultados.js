@@ -1,102 +1,106 @@
-// routes/resultados.js
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const {
+  guardarResultadoFinal,
+  guardarResultadoParcial,
+  obtenerResultadoParcial,
+  obtenerResultadosAlumno,
+  obtenerEstadisticasEnsayo
+} = require('../services/resultadosService');
 
-// Guarda resultado
+// POST resultado final
 router.post('/', async (req, res) => {
   try {
-    const { ensayo_id, alumno_id, puntaje, respuestas } = req.body;
-
-    if (!ensayo_id || !alumno_id || !respuestas) {
-      return res.status(400).json({
-        error: 'Faltan campos: ensayo_id, alumno_id y respuestas son obligatorios.'
-      });
-    }
-
-    const respObj = typeof respuestas === 'string' ? JSON.parse(respuestas) : respuestas;
-
-    let puntajeFinal = typeof puntaje === 'number' ? puntaje : null;
-
-    await db.query(
-      `INSERT INTO resultados (ensayo_id, alumno_id, puntaje, fecha, respuestas)
-       VALUES ($1, $2, $3, CURRENT_DATE, $4)`,
-      [Number(ensayo_id), Number(alumno_id), puntajeFinal, respObj]
-    );
-
-    return res.status(201).json({ mensaje: 'Resultado guardado' });
+    const data = await guardarResultadoFinal(req.body);
+    res.status(201).json(data);
   } catch (err) {
     console.error('❌ Error guardando resultado:', err);
-    return res.status(500).json({ error: 'Error guardando resultado' });
+    res.status(500).json({ error: 'Error guardando resultado' });
   }
 });
 
-// autosave
+// POST resultados pendientes
+router.post('/procesar-pendientes', async (req, res) => {
+  try {
+    const { rows: pendientes } = await db.query(
+      'SELECT ensayo_id FROM resultados_pendientes'
+    );
+
+    for (const p of pendientes) {
+      const { rows } = await db.query(
+        `SELECT 
+           COUNT(*) AS intentos,
+           AVG(puntaje) AS promedio,
+           MAX(puntaje) AS mejor,
+           MIN(puntaje) AS peor
+         FROM resultados
+         WHERE ensayo_id = $1`,
+        [p.ensayo_id]
+      );
+
+      const stats = rows[0];
+
+      await db.query(
+        `INSERT INTO resultados_cache (ensayo_id, datos, actualizado_en)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (ensayo_id)
+         DO UPDATE SET datos = EXCLUDED.datos,
+                       actualizado_en = NOW()`,
+        [p.ensayo_id, stats]
+      );
+    }
+
+    await db.query('DELETE FROM resultados_pendientes');
+
+    res.json({ mensaje: 'Procesadas', cantidad: pendientes.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error procesando pendientes' });
+  }
+});
+
+// PUT progreso parcial
 router.put('/parcial', async (req, res) => {
   try {
-    const { ensayo_id, alumno_id, respuestas } = req.body;
-
-    if (!ensayo_id || !alumno_id || !respuestas) {
-      return res.status(400).json({
-        error: 'Faltan campos: ensayo_id, alumno_id y respuestas son obligatorios.'
-      });
-    }
-
-    const respObj = typeof respuestas === 'string' ? JSON.parse(respuestas) : respuestas;
-
-    await db.query(
-      `INSERT INTO resultados_parciales (ensayo_id, alumno_id, respuestas, actualizado_en)
-       VALUES ($1, $2, $3, NOW())
-       ON CONFLICT (ensayo_id, alumno_id)
-       DO UPDATE SET respuestas = EXCLUDED.respuestas,
-                     actualizado_en = NOW()`,
-      [Number(ensayo_id), Number(alumno_id), respObj]
-    );
-
-    return res.status(200).json({ mensaje: 'Progreso guardado' });
+    const data = await guardarResultadoParcial(req.body);
+    res.json(data);
   } catch (err) {
     console.error('❌ Error guardando parcial:', err);
-    return res.status(500).json({ error: 'Error guardando parcial' });
+    res.status(500).json({ error: 'Error guardando parcial' });
   }
 });
 
-// obtencion resultado parcial
+// GET progreso
 router.get('/parcial/:ensayoId/:alumnoId', async (req, res) => {
   try {
-    const { ensayoId, alumnoId } = req.params;
-    const { rows } = await db.query(
-      `SELECT respuestas, actualizado_en
-         FROM resultados_parciales
-        WHERE ensayo_id = $1 AND alumno_id = $2`,
-      [Number(ensayoId), Number(alumnoId)]
-    );
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'No hay progreso guardado' });
-    }
-
-    return res.json(rows[0]);
+    const data = await obtenerResultadoParcial(req.params.ensayoId, req.params.alumnoId);
+    if (!data) return res.status(404).json({ error: 'No hay progreso guardado' });
+    res.json(data);
   } catch (err) {
     console.error('❌ Error obteniendo parcial:', err);
-    return res.status(500).json({ error: 'Error obteniendo parcial' });
+    res.status(500).json({ error: 'Error obteniendo parcial' });
   }
 });
 
-// resultados por alumno
+// GET resultados por alumno
 router.get('/:alumnoId', async (req, res) => {
   try {
-    const { alumnoId } = req.params;
-    const r = await db.query(
-      `SELECT r.id, r.ensayo_id, r.alumno_id, r.puntaje, r.fecha
-         FROM resultados r
-        WHERE r.alumno_id = $1
-        ORDER BY r.fecha DESC, r.id DESC`,
-      [Number(alumnoId)]
-    );
-    res.json(r.rows);
+    const data = await obtenerResultadosAlumno(req.params.alumnoId);
+    res.json(data);
   } catch (err) {
-    console.error('Error listando resultados:', err);
+    console.error('❌ Error listando resultados:', err);
     res.status(500).json({ error: 'Error listando resultados' });
+  }
+});
+
+// GET estadísticas de un ensayo
+router.get('/estadisticas/ensayo/:ensayoId', async (req, res) => {
+  try {
+    const data = await obtenerEstadisticasEnsayo(req.params.ensayoId);
+    res.json(data);
+  } catch (err) {
+    console.error('❌ Error obteniendo estadísticas:', err);
+    res.status(500).json({ error: 'Error obteniendo estadísticas' });
   }
 });
 

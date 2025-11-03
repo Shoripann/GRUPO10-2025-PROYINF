@@ -91,6 +91,19 @@ CREATE TABLE IF NOT EXISTS resultados_parciales (
     UNIQUE (ensayo_id, alumno_id)
 );
 
+-- 11. tabla resultados pendientes
+CREATE TABLE IF NOT EXISTS resultados_pendientes (
+  ensayo_id INT PRIMARY KEY,
+  creado_en TIMESTAMP DEFAULT NOW()
+);
+
+-- 12. tabla resultados cache
+CREATE TABLE IF NOT EXISTS resultados_cache (
+  ensayo_id INT PRIMARY KEY,
+  datos JSONB NOT NULL,
+  actualizado_en TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 INSERT INTO profesores (id, nombre, email, password, asignatura)
 VALUES (1, 'Profesor', 'profesor@profesor.com', 'profesor', 'Matematicas')
 ON CONFLICT (id) DO NOTHING;
