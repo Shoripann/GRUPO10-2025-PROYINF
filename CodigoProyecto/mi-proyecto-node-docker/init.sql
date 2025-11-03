@@ -81,6 +81,16 @@ CREATE TABLE IF NOT EXISTS resultados (
     fecha DATE DEFAULT CURRENT_DATE
 );
 
+-- 10. tabla resultados_parciales
+CREATE TABLE IF NOT EXISTS resultados_parciales (
+    id SERIAL PRIMARY KEY,
+    ensayo_id INT NOT NULL,
+    alumno_id INT NOT NULL,
+    respuestas JSONB NOT NULL,
+    actualizado_en TIMESTAMP DEFAULT NOW(),
+    UNIQUE (ensayo_id, alumno_id)
+);
+
 INSERT INTO profesores (id, nombre, email, password, asignatura)
 VALUES (1, 'Profesor', 'profesor@profesor.com', 'profesor', 'Matematicas')
 ON CONFLICT (id) DO NOTHING;

@@ -146,6 +146,26 @@ const Alumno = ({ alumnoId }) => {
     }
   };
 
+  // autosave (cada 15s)
+  useEffect(() => {
+    if (!ensayoActivo) return;
+
+    const autosaveInterval = setInterval(async () => {
+      try {
+        await axios.put('/api/resultados/parcial', {
+        ensayo_id: ensayoActivo.id,
+          alumno_id: alumnoId,
+          respuestas
+        });
+        console.log('✅ Progreso guardado automáticamente');
+      } catch (err) {
+        console.error('Error en autosave:', err);
+      }
+    }, 15000);
+
+    return () => clearInterval(autosaveInterval);
+  }, [ensayoActivo, respuestas, alumnoId]);
+
   // Ver revisión de ensayo
   const verRevision = (ensayo) => {
     setEnsayoRevision(ensayo);

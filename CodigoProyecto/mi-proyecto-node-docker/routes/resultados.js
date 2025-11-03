@@ -31,6 +31,57 @@ router.post('/', async (req, res) => {
   }
 });
 
+// autosave
+router.put('/parcial', async (req, res) => {
+  try {
+    const { ensayo_id, alumno_id, respuestas } = req.body;
+
+    if (!ensayo_id || !alumno_id || !respuestas) {
+      return res.status(400).json({
+        error: 'Faltan campos: ensayo_id, alumno_id y respuestas son obligatorios.'
+      });
+    }
+
+    const respObj = typeof respuestas === 'string' ? JSON.parse(respuestas) : respuestas;
+
+    await db.query(
+      `INSERT INTO resultados_parciales (ensayo_id, alumno_id, respuestas, actualizado_en)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (ensayo_id, alumno_id)
+       DO UPDATE SET respuestas = EXCLUDED.respuestas,
+                     actualizado_en = NOW()`,
+      [Number(ensayo_id), Number(alumno_id), respObj]
+    );
+
+    return res.status(200).json({ mensaje: 'Progreso guardado' });
+  } catch (err) {
+    console.error('❌ Error guardando parcial:', err);
+    return res.status(500).json({ error: 'Error guardando parcial' });
+  }
+});
+
+// obtencion resultado parcial
+router.get('/parcial/:ensayoId/:alumnoId', async (req, res) => {
+  try {
+    const { ensayoId, alumnoId } = req.params;
+    const { rows } = await db.query(
+      `SELECT respuestas, actualizado_en
+         FROM resultados_parciales
+        WHERE ensayo_id = $1 AND alumno_id = $2`,
+      [Number(ensayoId), Number(alumnoId)]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'No hay progreso guardado' });
+    }
+
+    return res.json(rows[0]);
+  } catch (err) {
+    console.error('❌ Error obteniendo parcial:', err);
+    return res.status(500).json({ error: 'Error obteniendo parcial' });
+  }
+});
+
 // resultados por alumno
 router.get('/:alumnoId', async (req, res) => {
   try {
