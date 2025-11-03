@@ -2,6 +2,7 @@ import os
 import json
 import unittest
 import requests
+import uuid  # para generar textos únicos
 
 class TestCursosEndpoints(unittest.TestCase):
 
@@ -62,19 +63,19 @@ class TestEndpointProfesor(unittest.TestCase):
             "asignatura": "Matemáticas"
         }
 
-        response = requests.post(cls.URL, json = data)
+        response = requests.post(cls.URL, json=data)
         assert response.status_code == 201
-        print( "Profesor creado" )
+        print("Profesor creado")
 
     def test_profesorValido(self):
         data = {
             "nombre": "Martina Alvarez",
-            "email": "martina@profesor.com",
+            "email": f"martina_{uuid.uuid4()}@profesor.com",  # email único
             "password": "5678",
             "asignatura": "Matemáticas"
         }
 
-        response = requests.post(self.URL, json = data)
+        response = requests.post(self.URL, json=data)
         self.assertEqual(response.status_code, 201)
         self.assertIn("email", response.json())
 
@@ -84,15 +85,100 @@ class TestEndpointProfesor(unittest.TestCase):
             "asignatura": "Lenguaje"
         }
 
-        response = requests.post(self.URL, json = data)
+        response = requests.post(self.URL, json=data)
         self.assertEqual(response.status_code, 400)
         self.assertIn("error", response.json())
 
     @classmethod
     def tearDownClass(cls):
         requests.delete(cls.URL)
-        print("\nPofesores eliminados correctamente.")
+        print("\nProfesores eliminados correctamente.")
         print("Proceso de pruebas finalizado.")
 
+
+class TestPreguntasEndpoints(unittest.TestCase):
+    BASE_URL = os.getenv("BASE_URL", "http://localhost:4000")
+    PREGUNTAS_URL = f"{BASE_URL}/api/preguntas"
+
+    def test_crear_pregunta_valida(self):
+        data = {
+            "texto": f"Pregunta de prueba única {uuid.uuid4()}",
+            "dificultad": "fácil",
+            "materia": "Geografía",
+            "profesor_id": 1,
+            "es_banco": True
+        }
+        r = requests.post(self.PREGUNTAS_URL, json=data, timeout=10)
+        self.assertEqual(r.status_code, 201)
+        self.assertIn("id", r.json())
+
+    def test_crear_pregunta_invalida(self):
+        data = {"texto": "", "dificultad": "media"}
+        r = requests.post(self.PREGUNTAS_URL, json=data, timeout=10)
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("error", r.json())
+
+    def test_listar_preguntas(self):
+        r = requests.get(self.PREGUNTAS_URL, timeout=10)
+        self.assertEqual(r.status_code, 200)
+        self.assertIsInstance(r.json(), list)
+
+    def test_banco_por_asignatura_valida(self):
+        r = requests.get(f"{self.PREGUNTAS_URL}/banco/Geografía", timeout=10)
+        self.assertEqual(r.status_code, 200)
+        preguntas = r.json()
+        for p in preguntas:
+            self.assertEqual(p["asignatura"], "Geografía")
+
+    def test_banco_asignatura_inexistente(self):
+        r = requests.get(f"{self.PREGUNTAS_URL}/banco/NoExiste", timeout=10)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json(), [])
+
+    def test_banco_asignatura_vacia(self):
+        r = requests.get(f"{self.PREGUNTAS_URL}/banco/", timeout=10)
+        # Puede devolver 404 (ruta no existe) o 400 (si se ajusta la ruta)
+        self.assertIn(r.status_code, [400, 404])
+
+
+class TestEnsayosEndpoints(unittest.TestCase):
+    BASE_URL = os.getenv("BASE_URL", "http://localhost:4000")
+    ENSAYOS_URL = f"{BASE_URL}/api/ensayos"
+
+    def test_crear_ensayo_valido(self):
+        data = {
+            "titulo": f"Ensayo Matemáticas {uuid.uuid4()}",
+            "asignatura": "Matemáticas",
+            "tiempoMinutos": 30,
+            "curso_id": 1,  # debe existir en tu BD
+            "preguntas": [1, 2]  # IDs válidos en tu BD
+        }
+        r = requests.post(self.ENSAYOS_URL, json=data, timeout=10)
+        self.assertEqual(r.status_code, 201)
+        body = r.json()
+        self.assertIn("id", body)
+        self.assertEqual(body["curso_id"], 1)
+
+    def test_crear_ensayo_curso_inexistente(self):
+        data = {
+            "titulo": "Ensayo Física",
+            "asignatura": "Física",
+            "tiempoMinutos": 20,
+            "curso_id": 9999,  # curso que no existe
+            "preguntas": [1]
+        }
+        r = requests.post(self.ENSAYOS_URL, json=data, timeout=10)
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("error", r.json())
+
+    def test_listar_ensayos_por_curso(self):
+        curso_id = 1
+        r = requests.get(f"{self.ENSAYOS_URL}/disponibles?curso_id={curso_id}", timeout=10)
+        self.assertEqual(r.status_code, 200)
+        ensayos = r.json()
+        for e in ensayos:
+            self.assertEqual(e["curso_id"], curso_id)
+
+
 if __name__ == "__main__":
-    unittest.main(verbosity = 2)
+    unittest.main(verbosity=2)
