@@ -17,7 +17,6 @@ router.post('/', async (req, res) => {
       if (profesorCheck.rows.length === 0) {
         return res.status(400).json({ error: 'El profesor especificado no existe' });
       }
-      profesorIdFinal = profesor_id;
     } 
 
     const r = await db.query(
@@ -85,3 +84,4 @@ router.get('/banco/:asignatura', async (req, res) => {
 });
 
 module.exports = router;
+
