@@ -181,8 +181,8 @@ router.get('/alumno/:alumnoId', async (req, res) => {
 
 // Revisión de un ensayo: respuesta alumno vs correcta
 router.get('/:id/revision/:alumnoId', async (req, res) => {
-  const ensayoId = parseInt(req.params.id, 10);
-  const alumnoId = parseInt(req.params.alumnoId, 10);
+  const ensayoId = Number.parseInt(req.params.id, 10);
+  const alumnoId = Number.parseInt(req.params.alumnoId, 10);
 
   try {
     const intentoRes = await pool.query(
@@ -226,7 +226,7 @@ router.get('/:id/revision/:alumnoId', async (req, res) => {
         
         if (respuestaAlumno !== undefined && respuestaAlumno !== null) {
           seleccionadaIndex = typeof respuestaAlumno === 'string' 
-            ? parseInt(respuestaAlumno, 10) 
+            ? Number.parseInt(respuestaAlumno, 10) 
             : respuestaAlumno;
         }
 
@@ -266,3 +266,4 @@ router.get('/:id/revision/:alumnoId', async (req, res) => {
 
 
 module.exports = router;
+
